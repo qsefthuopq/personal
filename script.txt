@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         工作台文本翻译|复制按钮|自动缩放|排版修复版
+// @name         工作台文本翻译|复制按钮|自动缩放|浮层修复版
 // @namespace    http://tampermonkey.net/
-// @version      8.5.0
-// @description  修复v8.5：解决文字重叠、未顶部对齐的问题｜保留所有功能｜快捷键(-/=)
+// @version      8.6.0
+// @description  修复v8.6：采用悬浮层显示长文本(解决样式问题)｜修复翻译接口｜解决重叠
 // @author       You
 // @match        https://breeze.opd.easebar.com/*
 // @grant        GM_xmlhttpRequest
@@ -16,30 +16,30 @@
 (function () {
     'use strict';
 
-    // ====== 核心配置 ======
-    const COLUMN_INDEX = 8; // 第8列
+    // ====== 配置 ======
+    const COLUMN_INDEX = 8;
     const MAX_CELL_HEIGHT = 165;
     const SINGLE_LINE_HEIGHT = 50;
     let MIN_FONT_SIZE = 16;
     let MAX_FONT_SIZE = 32;
     let SINGLE_LINE_CHAR_LIMIT = 60;
 
-    // 类名常量
+    // 类名
     const WRAPPER_CLASS = 'fixed-height-cell';
+    const EXPANDED_CLASS = 'expanded-overlay'; // 改名：强调是悬浮层
     const COPY_BTN_CLASS = 'copy-original-btn';
     const ROLE_COPY_BTN_CLASS = 'copy-role-combined-btn';
     const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn';
-    const EXPANDED_CLASS = 'expanded-full';
 
-    // ====== 状态变量 ======
+    // 变量
     let isTranslationEnabled = true;
     const translationCache = new Map();
     let processing = false;
     let processDebounceTimer = null;
     let roleIdColumnIndexes = [];
     let globalMeasureContainer = null;
-
-    // 按钮适配配置
+    
+    // 按钮适配
     const BUTTON_ADAPTER_CONFIG = {
         isEnabled: false,
         targetButtons: 'button.ant-btn',
@@ -50,49 +50,44 @@
     };
     const processedButtons = new WeakSet();
 
-    // 控制面板变量
+    // 面板
     let controlPanelMinimized = true;
     let controlPanel = null;
 
-    // ====== 初始化 ======
     function init() {
-        console.log('v8.5.0 排版修复版已加载');
+        console.log('v8.6.0 浮层修复版已加载');
         loadSettings();
-        addGlobalStyle(); // 核心修复在这里
+        addGlobalStyle();
         createMeasureContainer();
         createControlPanel();
         bindShortcut();
-
         startStableMonitoring();
+        
+        // 初始化重试
+        const retry = () => {
+            processAllCellsInBatches();
+            addRoleButtons();
+        };
+        setTimeout(retry, 1500);
+        setTimeout(retry, 3000);
 
-        // 定时器与重试
         setInterval(() => {
             if (BUTTON_ADAPTER_CONFIG.isEnabled) processAllTargetButtons();
         }, 800);
 
-        const retryInit = () => {
-            processAllCellsInBatches();
-            addRoleButtons();
-        };
-        setTimeout(retryInit, 1000);
-        setTimeout(retryInit, 3000);
-        
         initSmartScrollHandling();
     }
 
-    // ====== 核心逻辑：处理单元格 ======
+    // ====== 核心处理 ======
     function processAllCellsInBatches() {
         if (processing) return;
         processing = true;
 
         const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
-        
-        // 筛选未包装的单元格
         const cellsToProcess = Array.from(allCells).filter(cell => {
-            if (cell.querySelector('input') || cell.querySelector('textarea')) return false;
-            // 只要没有wrapper类，就视为未处理
-            const hasWrapper = cell.querySelector(`.${WRAPPER_CLASS}`);
-            return !hasWrapper && cell.textContent.trim().length > 0;
+            if (cell.querySelector('input, textarea')) return false;
+            // 如果没有 wrapper，或者内容被重置了，就需要处理
+            return !cell.querySelector(`.${WRAPPER_CLASS}`) && cell.textContent.trim().length > 0;
         }).slice(0, 50);
 
         if (cellsToProcess.length === 0) {
@@ -100,9 +95,7 @@
             return;
         }
 
-        cellsToProcess.forEach(cell => {
-            wrapCellContent(cell);
-        });
+        cellsToProcess.forEach(wrapCellContent);
 
         setTimeout(() => {
             cellsToProcess.forEach(cell => {
@@ -113,10 +106,7 @@
         }, 0);
 
         processing = false;
-        
-        if (allCells.length > cellsToProcess.length) {
-            setTimeout(processAllCellsInBatches, 100);
-        }
+        if (allCells.length > cellsToProcess.length) setTimeout(processAllCellsInBatches, 100);
     }
 
     function wrapCellContent(cell) {
@@ -125,27 +115,45 @@
 
         cell.innerHTML = '';
         cell.dataset.originalText = text;
+        // 清除旧的翻译标记，确保能重新翻译
+        delete cell.dataset.translated;
 
         const container = document.createElement('div');
         container.className = WRAPPER_CLASS;
         
-        const originalSpan = document.createElement('span');
-        originalSpan.className = 'original';
-        originalSpan.textContent = text;
+        const origSpan = document.createElement('div'); // 使用 div 块级元素避免重叠
+        origSpan.className = 'original';
+        origSpan.textContent = text;
+        container.appendChild(origSpan);
         
-        container.appendChild(originalSpan);
         cell.appendChild(container);
-
         addCopyBtn(cell);
 
+        // 长文本点击逻辑：切换悬浮层
         if (text.length > SINGLE_LINE_CHAR_LIMIT) {
             container.classList.add('long-text');
+            container.title = "点击展开查看完整内容";
             container.onclick = (e) => {
-                e.stopPropagation();
+                e.stopPropagation(); // 防止触发行点击
+                
+                // 关闭其他已展开的
+                document.querySelectorAll(`.${EXPANDED_CLASS}`).forEach(el => {
+                    if (el !== container) {
+                        el.classList.remove(EXPANDED_CLASS);
+                        // 恢复字体大小
+                        const pCell = el.closest('td');
+                        if(pCell) adjustFontSizeForCell(pCell);
+                    }
+                });
+
                 container.classList.toggle(EXPANDED_CLASS);
+                
                 if (container.classList.contains(EXPANDED_CLASS)) {
-                    container.style.fontSize = '16px';
+                    // 展开时：固定字体，绝对定位，层级最高
+                    container.style.fontSize = '14px';
+                    container.scrollTop = 0;
                 } else {
+                    // 收起时：重新计算缩放
                     adjustFontSizeForCell(cell);
                 }
             };
@@ -154,112 +162,127 @@
 
     function getCleanText(cell) {
         const clone = cell.cloneNode(true);
-        clone.querySelectorAll('div[class*="btn"], button').forEach(el => el.remove());
+        clone.querySelectorAll('div[class*="btn"], button, .translation').forEach(el => el.remove());
         return clone.textContent.trim();
     }
 
-    // ====== 样式修复 (关键修复点) ======
-    function addGlobalStyle() {
-        const css = `
-            /* 1. 强制单元格顶部对齐，防止内容居中 */
-            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) { 
-                position: relative !important; 
-                padding: 0 !important; 
-                height: auto !important; 
-                vertical-align: top !important; /* 关键：从顶部开始 */
-            }
-            
-            /* 2. 内容容器样式修复 */
-            .${WRAPPER_CLASS} { 
-                position: relative; 
-                width: 100%; 
-                max-height: ${MAX_CELL_HEIGHT}px; 
-                overflow-y: auto; 
-                padding: 6px 8px; /* 增加一点内边距 */
-                box-sizing: border-box; 
-                white-space: pre-wrap; 
-                word-wrap: break-word; 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                
-                /* 3. 关键：解决文字重叠 */
-                line-height: 1.4 !important;  /* 相对行高，随字体变大而变大 */
-                display: block !important;    /* 防止被 Flex 影响 */
-                text-align: left !important;  /* 强制左对齐 */
-            }
+    // ====== 翻译修复 ======
+    async function translateIfNeeded(cell) {
+        // 如果正在翻译或已翻译，跳过
+        if (cell.dataset.translating === 'true' || cell.dataset.translated === 'true') return;
+        
+        const text = cell.dataset.originalText;
+        if (!text || text.length < 2) return;
 
-            /* 单行模式 */
-            .${WRAPPER_CLASS}.single-line { 
-                overflow: hidden; 
-                text-overflow: ellipsis; 
-                white-space: nowrap; 
-                height: ${SINGLE_LINE_HEIGHT}px; 
-                line-height: ${SINGLE_LINE_HEIGHT}px !important; /* 单行时强制垂直居中 */
-                padding-top: 0;
-                padding-bottom: 0;
+        if (translationCache.has(text)) {
+            applyTranslation(cell, translationCache.get(text));
+            return;
+        }
+
+        // 标记正在翻译，防止重复请求
+        cell.dataset.translating = 'true';
+        
+        // 显示加载状态
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (container) {
+            let loading = container.querySelector('.trans-loading');
+            if (!loading) {
+                loading = document.createElement('div');
+                loading.className = 'trans-loading';
+                loading.textContent = '...';
+                loading.style.color = '#999';
+                loading.style.fontSize = '12px';
+                container.appendChild(loading);
             }
+        }
+
+        try {
+            const res = await translateText(text);
+            // 移除加载状态
+            const loading = container?.querySelector('.trans-loading');
+            if (loading) loading.remove();
             
-            .${WRAPPER_CLASS}.no-scroll { overflow: hidden; }
-            .${WRAPPER_CLASS} .translation { display: block; font-weight: bold; margin-top: 4px; color: #333; }
-            .${WRAPPER_CLASS}.long-text { cursor: pointer; background: rgba(24,144,255,0.05); }
-            .${WRAPPER_CLASS}.${EXPANDED_CLASS} { 
-                max-height: none !important; 
-                overflow: visible !important; 
-                background: white; 
-                border: 1px solid #1890ff; 
-                padding: 12px; 
-                z-index: 999; 
-                border-radius: 4px; 
-                box-shadow: 0 4px 16px rgba(0,0,0,0.2); 
-            }
+            cell.dataset.translating = 'false';
             
-            /* 按钮样式优化 */
-            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
-                position: absolute; 
-                background: rgba(255,255,255,0.9); 
-                border: 1px solid #d9d9d9; 
-                border-radius: 4px; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                cursor: pointer; 
-                z-index: 20; 
-                color: #666; 
-                transition: all 0.2s; 
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            if (res && res !== text) {
+                translationCache.set(text, res);
+                applyTranslation(cell, res);
             }
-            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 28px; height: 28px; font-size: 14px; }
-            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
-            
-            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
-                border-color: #1890ff; color: #1890ff; transform: scale(1.05);
-            }
-            .copied { color: #52c41a !important; border-color: #52c41a !important; background: #f6ffed !important; }
-            .error { color: #ff4d4f !important; border-color: #ff4d4f !important; background: #fff1f0 !important; }
-        `;
-        const style = document.createElement('style');
-        style.textContent = css;
-        document.head.appendChild(style);
+        } catch (e) {
+            console.error('翻译失败:', e);
+            cell.dataset.translating = 'false';
+            const loading = container?.querySelector('.trans-loading');
+            if (loading) loading.remove();
+        }
     }
 
-    // ====== 字体缩放 (适配新的行高逻辑) ======
+    function applyTranslation(cell, transText) {
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (!container) return;
+        
+        // 再次检查是否已存在，防止重复添加
+        if (container.querySelector('.translation')) return;
+
+        const transDiv = document.createElement('div');
+        transDiv.className = 'translation';
+        transDiv.textContent = transText;
+        container.appendChild(transDiv);
+        
+        cell.dataset.translated = 'true';
+        adjustFontSizeForCell(cell);
+    }
+
+    function translateText(text) {
+        return new Promise((resolve, reject) => {
+            // 使用更稳定的 API 参数
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: url,
+                timeout: 10000,
+                onload: (r) => {
+                    if (r.status !== 200) {
+                        reject(`API Error: ${r.status}`);
+                        return;
+                    }
+                    try {
+                        const data = JSON.parse(r.responseText);
+                        // 健壮的解析逻辑：拼接所有段落
+                        if (data && data[0]) {
+                            const result = data[0].map(item => item[0]).join('');
+                            resolve(result);
+                        } else {
+                            resolve(text);
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: (e) => reject(e),
+                ontimeout: () => reject('Timeout')
+            });
+        });
+    }
+
+    // ====== 字体缩放 & 重叠修复 ======
     function createMeasureContainer() {
         if (globalMeasureContainer) return;
         globalMeasureContainer = document.createElement('div');
-        // 这里的样式要和 WRAPPER_CLASS 保持一致，才能测得准
+        // 关键：line-height 必须与 CSS 一致 (1.4)
         globalMeasureContainer.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;padding:6px 8px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
         document.body.appendChild(globalMeasureContainer);
     }
 
     function adjustFontSizeForCell(cell) {
         const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        // 如果处于展开状态，不进行计算，直接使用固定字体
         if (!container || container.classList.contains(EXPANDED_CLASS)) return;
 
         let text = '';
         const orig = container.querySelector('.original');
         const trans = container.querySelector('.translation');
         if (orig) text += orig.textContent;
-        if (trans) text += '\n' + trans.textContent; // 使用换行符模拟 block 显示
+        if (trans) text += '\n' + trans.textContent; // 加上换行符模拟真实高度
         if (!text) text = cell.dataset.originalText || '';
 
         if (!globalMeasureContainer) createMeasureContainer();
@@ -267,15 +290,14 @@
         globalMeasureContainer.textContent = text;
 
         let size = MAX_FONT_SIZE;
-        const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT && !text.includes('\n') && !trans; // 有翻译就不算单行
-        
+        const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT && !trans;
+
         container.classList.toggle('single-line', isSingleLine);
-        
+
         if (isSingleLine) {
-             // 单行模式简单处理
-             container.style.fontSize = MAX_FONT_SIZE + 'px';
+            container.style.fontSize = MAX_FONT_SIZE + 'px';
         } else {
-            // 多行模式：自适应
+            // 循环计算合适的大小
             globalMeasureContainer.style.fontSize = size + 'px';
             while (size > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > MAX_CELL_HEIGHT) {
                 size -= 1;
@@ -287,66 +309,101 @@
         container.classList.toggle('no-scroll', container.scrollHeight <= MAX_CELL_HEIGHT + 5);
     }
 
-    // ====== 翻译 ======
-    async function translateIfNeeded(cell) {
-        if (cell.dataset.translated === 'true') return;
-        const text = cell.dataset.originalText;
-        if (!text || text.length < 2) return;
-
-        if (translationCache.has(text)) {
-            applyTranslation(cell, translationCache.get(text));
-            return;
-        }
-
-        try {
-            const res = await translateText(text);
-            if (res && res !== text) {
-                translationCache.set(text, res);
-                applyTranslation(cell, res);
+    // ====== 样式 (悬浮层逻辑) ======
+    function addGlobalStyle() {
+        const css = `
+            /* 强制单元格顶部对齐 */
+            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) { 
+                vertical-align: top !important; 
+                padding: 0 !important; 
+                height: auto !important;
+                position: relative !important; /* 为悬浮层提供锚点 */
             }
-        } catch (e) {}
+            
+            /* 内容容器 */
+            .${WRAPPER_CLASS} { 
+                position: relative; 
+                width: 100%; 
+                max-height: ${MAX_CELL_HEIGHT}px; 
+                overflow-y: auto; 
+                padding: 6px 8px; 
+                box-sizing: border-box; 
+                white-space: pre-wrap; 
+                word-wrap: break-word; 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                line-height: 1.4 !important; /* 解决重叠 */
+                display: block !important; 
+                text-align: left !important;
+                transition: background 0.2s, box-shadow 0.2s;
+            }
+
+            .${WRAPPER_CLASS}.single-line { 
+                height: ${SINGLE_LINE_HEIGHT}px; 
+                line-height: ${SINGLE_LINE_HEIGHT}px !important; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                white-space: nowrap;
+            }
+            
+            .${WRAPPER_CLASS}.long-text:hover { 
+                background: rgba(24,144,255,0.05); 
+                cursor: zoom-in;
+            }
+            
+            /* 翻译文本样式 */
+            .translation { 
+                display: block; 
+                margin-top: 6px; 
+                font-weight: bold; 
+                color: #1890ff; 
+                border-top: 1px dashed rgba(0,0,0,0.1);
+                padding-top: 4px;
+            }
+
+            /* 悬浮展开层 (核心修复) */
+            .${WRAPPER_CLASS}.${EXPANDED_CLASS} {
+                position: absolute !important;
+                top: 0;
+                left: 0;
+                width: 100%; /* 或者可以设为 min-content 甚至比单元格宽 */
+                min-width: 300px;
+                height: auto !important;
+                max-height: 500px !important;
+                background: #fff;
+                z-index: 9999;
+                box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+                border: 1px solid #1890ff;
+                border-radius: 4px;
+                padding: 12px;
+                overflow-y: auto;
+                cursor: zoom-out;
+            }
+            
+            /* 按钮 */
+            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
+                position: absolute; background: rgba(255,255,255,0.8); border: 1px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; color: #666; 
+            }
+            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 26px; height: 26px; font-size: 14px; }
+            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; }
+            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; }
+            
+            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { border-color: #1890ff; color: #1890ff; background: #fff; }
+            .copied { color: #52c41a !important; border-color: #52c41a !important; }
+            .error { color: #ff4d4f !important; }
+        `;
+        const style = document.createElement('style');
+        style.textContent = css;
+        document.head.appendChild(style);
     }
 
-    function applyTranslation(cell, transText) {
-        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
-        if (!container || container.querySelector('.translation')) return;
-
-        const transSpan = document.createElement('div'); // 改用 div 让翻译换行显示
-        transSpan.className = 'translation';
-        transSpan.textContent = transText;
-        container.appendChild(transSpan);
-        
-        cell.dataset.translated = 'true';
-        adjustFontSizeForCell(cell);
-    }
-
-    function translateText(text) {
-        return new Promise(resolve => {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`,
-                onload: r => {
-                    try {
-                        const data = JSON.parse(r.responseText);
-                        resolve(data[0].map(x => x[0]).join(''));
-                    } catch(e) { resolve(text); }
-                },
-                onerror: () => resolve(text)
-            });
-        });
-    }
-
-    // ====== 复制功能 ======
+    // ====== 复制 & RoleID ======
     function addCopyBtn(cell) {
         if (cell.querySelector(`.${COPY_BTN_CLASS}`)) return;
         const btn = document.createElement('div');
         btn.className = COPY_BTN_CLASS;
         btn.textContent = '+';
-        btn.title = '复制原文';
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            copyText(cell.dataset.originalText || getCleanText(cell), btn, '+');
-        };
+        btn.title = '复制';
+        btn.onclick = e => { e.stopPropagation(); copyText(cell.dataset.originalText, btn, '+'); };
         cell.appendChild(btn);
     }
 
@@ -363,17 +420,17 @@
         roleIdColumnIndexes.forEach(idx => {
             document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${idx})`).forEach(cell => {
                 if (!cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) {
-                    const txt = getCleanText(cell);
+                    const txt = cell.textContent.trim();
                     if (!txt) return;
 
                     const btn1 = document.createElement('div');
                     btn1.className = ROLE_COPY_BTN_CLASS;
                     btn1.textContent = '+';
-                    btn1.onclick = (e) => {
+                    btn1.onclick = e => {
                         e.stopPropagation();
                         const row = cell.closest('tr');
-                        const mainCell = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
-                        const mainTxt = mainCell ? (mainCell.dataset.originalText || getCleanText(mainCell)) : '';
+                        const main = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
+                        const mainTxt = main ? (main.dataset.originalText || main.textContent) : '';
                         copyText(mainTxt + '\n' + txt, btn1, '+');
                     };
                     cell.style.position = 'relative';
@@ -382,10 +439,7 @@
                     const btn2 = document.createElement('div');
                     btn2.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
                     btn2.textContent = '-';
-                    btn2.onclick = (e) => {
-                        e.stopPropagation();
-                        copyText(txt, btn2, '-');
-                    };
+                    btn2.onclick = e => { e.stopPropagation(); copyText(txt, btn2, '-'); };
                     cell.appendChild(btn2);
                 }
             });
@@ -394,7 +448,7 @@
 
     async function copyText(txt, btn, icon) {
         try {
-            await navigator.clipboard.writeText(txt);
+            await navigator.clipboard.writeText(txt || '');
             btn.textContent = '✓'; btn.classList.add('copied');
             setTimeout(() => { btn.textContent = icon; btn.classList.remove('copied'); }, 1000);
         } catch(e) {
@@ -403,19 +457,15 @@
         }
     }
 
-    // ====== 监控 ======
+    // ====== 监控与面板 ======
     function startStableMonitoring() {
         const observer = new MutationObserver((mutations) => {
             let shouldProcess = false;
-            for (const mutation of mutations) {
-                const target = mutation.target;
-                // 忽略 Popover 浮层，解决卡顿
-                if (target.nodeType === 1) {
-                    if (target.closest('.ant-popover, .ant-tooltip, .ant-dropdown')) continue;
-                }
-                if (mutation.type === 'childList') {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1 && (node.tagName === 'TR' || node.tagName === 'TD' || node.querySelector('.ant-table-tbody'))) {
+            for (const m of mutations) {
+                if (m.target.nodeType === 1 && m.target.closest('.ant-popover, .ant-tooltip')) continue;
+                if (m.type === 'childList') {
+                    for (const n of m.addedNodes) {
+                        if (n.nodeType === 1 && (n.tagName === 'TR' || n.tagName === 'TD' || n.querySelector('.ant-table-tbody'))) {
                             shouldProcess = true; break;
                         }
                     }
@@ -424,145 +474,104 @@
             }
             if (shouldProcess) {
                 if (processDebounceTimer) clearTimeout(processDebounceTimer);
-                processDebounceTimer = setTimeout(() => {
-                    processAllCellsInBatches();
-                    addRoleButtons();
-                }, 500);
+                processDebounceTimer = setTimeout(() => { processAllCellsInBatches(); addRoleButtons(); }, 500);
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // ====== 按钮适配 ======
+    function createControlPanel() {
+        controlPanel = document.createElement('div');
+        controlPanel.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:12px;color:#333;';
+        controlPanel.innerHTML = `
+            <div id="p-mini" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1890ff;font-weight:bold;background:rgba(24,144,255,0.1);">+</div>
+            <div id="p-full" style="display:none;width:240px;">
+                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;"><b>翻译助手 v8.6</b><span id="p-close" style="cursor:pointer;">−</span></div>
+                <div style="padding:15px;">
+                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-trans" ${isTranslationEnabled?'checked':''}> 启用翻译 (Alt+Z)</label>
+                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮适配 (=)</label>
+                    <div style="margin:8px 0;">字体: <input id="i-min" value="${MIN_FONT_SIZE}" style="width:30px">-<input id="i-max" value="${MAX_FONT_SIZE}" style="width:30px"> px</div>
+                    <button id="b-apply" style="width:100%;margin-top:5px;padding:5px;background:#1890ff;color:fff;border:none;border-radius:4px;cursor:pointer;">应用</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(controlPanel);
+        
+        const mini = controlPanel.querySelector('#p-mini');
+        const full = controlPanel.querySelector('#p-full');
+        const toggle = () => {
+            controlPanelMinimized = !controlPanelMinimized;
+            mini.style.display = controlPanelMinimized ? 'flex' : 'none';
+            full.style.display = controlPanelMinimized ? 'none' : 'block';
+            GM_setValue('panelMin', controlPanelMinimized);
+        };
+        mini.onclick = toggle; controlPanel.querySelector('#p-close').onclick = toggle;
+        if(controlPanelMinimized) toggle(); // Apply initial state
+
+        controlPanel.querySelector('#chk-trans').onchange = e => {
+            isTranslationEnabled = e.target.checked; GM_setValue('trans', isTranslationEnabled);
+            isTranslationEnabled ? processAllCellsInBatches() : location.reload();
+        };
+        controlPanel.querySelector('#chk-adapt').onchange = e => {
+            BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked; GM_setValue('adapt', BUTTON_ADAPTER_CONFIG.isEnabled);
+        };
+        controlPanel.querySelector('#b-apply').onclick = () => {
+            MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#i-min').value);
+            MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#i-max').value);
+            GM_setValue('minF', MIN_FONT_SIZE); GM_setValue('maxF', MAX_FONT_SIZE);
+            processAllCellsInBatches();
+        };
+    }
+
+    function loadSettings() {
+        try {
+            isTranslationEnabled = GM_getValue('trans', true);
+            BUTTON_ADAPTER_CONFIG.isEnabled = GM_getValue('adapt', false);
+            controlPanelMinimized = GM_getValue('panelMin', true);
+            MIN_FONT_SIZE = GM_getValue('minF', 16);
+            MAX_FONT_SIZE = GM_getValue('maxF', 32);
+        } catch(e){}
+    }
+
+    function bindShortcut() {
+        document.addEventListener('keydown', e => {
+            if(e.target.tagName==='INPUT') return;
+            if(e.altKey && e.key.toLowerCase()==='z') {
+                e.preventDefault(); document.getElementById('chk-trans').click();
+                GM_notification({text:`翻译 ${isTranslationEnabled?'ON':'OFF'}`, timeout:1000});
+            }
+            if(e.key==='-') document.getElementById('p-mini').click();
+            if(e.key==='=') document.getElementById('chk-adapt').click();
+        });
+    }
+
+    // 智能滚动
+    function initSmartScrollHandling() {
+        document.addEventListener('wheel', e => {
+            const t = e.target.closest(`.${WRAPPER_CLASS}`);
+            if(t && t.scrollHeight > t.clientHeight) {
+                if((e.deltaY<0 && t.scrollTop>0) || (e.deltaY>0 && Math.abs(t.scrollHeight-t.scrollTop-t.clientHeight)>1)) e.stopPropagation();
+            }
+        }, {passive:false, capture:true});
+    }
+
+    // 按钮适配
     function processAllTargetButtons() {
         document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
-            if (BUTTON_ADAPTER_CONFIG.targetTexts.some(t => btn.textContent.includes(t)) && !processedButtons.has(btn)) {
-                adaptButtonHeight(btn);
-            }
+            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>btn.textContent.includes(t)) && !processedButtons.has(btn)) adaptButtonHeight(btn);
         });
     }
     function adaptButtonHeight(btn) {
         const row = btn.closest('tr'); if(!row) return;
         const cell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .${WRAPPER_CLASS}`); if(!cell) return;
-        let h = cell.scrollHeight + BUTTON_ADAPTER_CONFIG.offset;
-        h = Math.min(Math.max(h, BUTTON_ADAPTER_CONFIG.minHeight), BUTTON_ADAPTER_CONFIG.maxHeight);
-        btn.style.height = h + 'px'; btn.style.lineHeight = h + 'px';
+        let h = Math.min(Math.max(cell.scrollHeight + BUTTON_ADAPTER_CONFIG.offset, BUTTON_ADAPTER_CONFIG.minHeight), BUTTON_ADAPTER_CONFIG.maxHeight);
+        btn.style.height = h+'px'; btn.style.lineHeight = h+'px';
         processedButtons.add(btn);
     }
     function adaptButtonsInRow(row) {
-        if(!row) return;
-        setTimeout(() => {
-             row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
-                if (BUTTON_ADAPTER_CONFIG.targetTexts.some(t => btn.textContent.includes(t))) adaptButtonHeight(btn);
-            });
-        }, 500);
-    }
-
-    // ====== 智能滚动 ======
-    function initSmartScrollHandling() {
-        document.addEventListener('wheel', (e) => {
-            const t = e.target.closest(`.${WRAPPER_CLASS}`);
-            if (t && t.scrollHeight > t.clientHeight) {
-                const top = t.scrollTop === 0;
-                const bot = Math.abs(t.scrollHeight - t.scrollTop - t.clientHeight) < 1;
-                const up = e.deltaY < 0;
-                const down = e.deltaY > 0;
-                if ((up && !top) || (down && !bot)) e.stopPropagation();
-            }
-        }, { passive: false, capture: true });
-    }
-
-    // ====== 控制面板 & 快捷键 ======
-    function createControlPanel() {
-        controlPanel = document.createElement('div');
-        controlPanel.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;background:rgba(255,255,255,0.95);border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:12px;color:#333;overflow:hidden;';
-        controlPanel.innerHTML = `
-            <div id="panel-mini" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1890ff;font-weight:bold;background:rgba(24,144,255,0.1);">+</div>
-            <div id="panel-full" style="display:none;width:250px;">
-                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;cursor:move;" id="panel-head">
-                    <b>🔧 翻译助手 v8.5</b><span id="panel-close" style="cursor:pointer;">−</span>
-                </div>
-                <div style="padding:15px;max-height:400px;overflow-y:auto;">
-                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-trans" ${isTranslationEnabled?'checked':''}> 启用翻译 (Alt+Z)</label>
-                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮高度适配 (=)</label>
-                    <div style="margin:8px 0;">字体范围: <input id="inp-min" value="${MIN_FONT_SIZE}" style="width:30px"> - <input id="inp-max" value="${MAX_FONT_SIZE}" style="width:30px"> px</div>
-                    <button id="btn-apply" style="width:100%;margin-top:10px;padding:5px;background:#1890ff;color:white;border:none;border-radius:4px;cursor:pointer;">应用设置</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(controlPanel);
-
-        const mini = controlPanel.querySelector('#panel-mini');
-        const full = controlPanel.querySelector('#panel-full');
-        const toggle = () => {
-            controlPanelMinimized = !controlPanelMinimized;
-            mini.style.display = controlPanelMinimized ? 'flex' : 'none';
-            full.style.display = controlPanelMinimized ? 'none' : 'block';
-            saveSettings();
-        };
-        mini.onclick = toggle;
-        controlPanel.querySelector('#panel-close').onclick = toggle;
-        if(controlPanelMinimized) { mini.style.display = 'flex'; full.style.display = 'none'; }
-        else { mini.style.display = 'none'; full.style.display = 'block'; }
-
-        controlPanel.querySelector('#chk-trans').onchange = (e) => {
-            isTranslationEnabled = e.target.checked;
-            saveSettings();
-            if(isTranslationEnabled) processAllCellsInBatches();
-            else {
-                document.querySelectorAll('.translation').forEach(el => el.remove());
-                document.querySelectorAll(`.${WRAPPER_CLASS}`).forEach(el => delete el.parentElement.dataset.translated);
-            }
-        };
-        controlPanel.querySelector('#chk-adapt').onchange = (e) => {
-            BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked;
-            saveSettings();
-        };
-        controlPanel.querySelector('#btn-apply').onclick = () => {
-            MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#inp-min').value);
-            MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#inp-max').value);
-            saveSettings();
-            processAllCellsInBatches();
-        };
-        
-        // 拖拽
-        const head = controlPanel.querySelector('#panel-head');
-        let isDrag = false, startX, startY, initX, initY;
-        head.onmousedown = e => { isDrag = true; startX = e.clientX; startY = e.clientY; initX = controlPanel.offsetLeft; initY = controlPanel.offsetTop; };
-        document.onmousemove = e => { if(isDrag) { controlPanel.style.left = initX + e.clientX - startX + 'px'; controlPanel.style.top = initY + e.clientY - startY + 'px'; controlPanel.style.right = 'auto'; }};
-        document.onmouseup = () => isDrag = false;
-    }
-
-    function bindShortcut() {
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            if (e.altKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault(); document.getElementById('chk-trans').click();
-                GM_notification({text: `翻译 ${isTranslationEnabled?'开启':'关闭'}`, timeout: 1000});
-            }
-            if (e.key === '-' || e.code === 'Minus') {
-                e.preventDefault(); document.getElementById('panel-mini').click();
-            }
-            if (e.key === '=' || e.code === 'Equal') {
-                e.preventDefault(); document.getElementById('chk-adapt').click();
-                GM_notification({text: `按钮适配 ${BUTTON_ADAPTER_CONFIG.isEnabled?'开启':'关闭'}`, timeout: 1000});
-            }
-        });
-    }
-
-    function loadSettings() {
-        try {
-            isTranslationEnabled = GM_getValue('isTranslationEnabled', true);
-            BUTTON_ADAPTER_CONFIG.isEnabled = GM_getValue('isAdapterEnabled', false);
-            controlPanelMinimized = GM_getValue('isPanelMinimized', true);
-            MIN_FONT_SIZE = GM_getValue('minFont', 16);
-        } catch(e) {}
-    }
-    function saveSettings() {
-        GM_setValue('isTranslationEnabled', isTranslationEnabled);
-        GM_setValue('isAdapterEnabled', BUTTON_ADAPTER_CONFIG.isEnabled);
-        GM_setValue('isPanelMinimized', controlPanelMinimized);
-        GM_setValue('minFont', MIN_FONT_SIZE);
+        if(row) setTimeout(() => row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(b => {
+            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>b.textContent.includes(t))) adaptButtonHeight(b);
+        }), 500);
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
