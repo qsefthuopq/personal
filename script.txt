@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         工作台文本翻译|复制按钮|自动缩放|按钮高度
+// @name         工作台文本翻译|复制按钮|自动缩放|性能优化版
 // @namespace    http://tampermonkey.net/
-// @version      8.0.6
-// @description  列复制按钮｜修复相同内容处理｜快捷键：+ 自动高度｜Alt+Z 切换翻译｜谷歌翻译｜性能优化
+// @version      8.1.0
+// @description  性能优化版本：解决Ant-Popover卡顿｜修复复制失效｜修复相同内容不处理｜智能防抖
 // @author       You
 // @match        https://breeze.opd.easebar.com/*
 // @grant        GM_xmlhttpRequest
@@ -22,22 +22,17 @@
     let MAX_FONT_SIZE = 32;
     const MAX_CELL_HEIGHT = 165;
     const SINGLE_LINE_HEIGHT = 50;
-    const BATCH_SIZE = 25;
+    const BATCH_SIZE = 50; // 增加批处理大小
     let SINGLE_LINE_CHAR_LIMIT = 60;
     const COPY_BTN_CLASS = 'copy-original-btn';
     const ROLE_COPY_BTN_CLASS = 'copy-role-combined-btn';
-    const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn'; // role_id列仅复制按钮
+    const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn';
     const EXPANDED_CLASS = 'expanded-full';
 
     // ====== 性能优化配置 ======
     const PERFORMANCE_CONFIG = {
-        logLevel: 'info',
-        batchProcessing: true,
         debounceDelay: 300,
-        maxProcessingTime: 1000,
-        enablePerformanceMonitor: false,
-        scrollThrottle: 100,
-        maxCellsPerBatch: 50,
+        maxCellsPerBatch: 100, // 提高单次处理上限
         smartScrollEnabled: true
     };
 
@@ -45,746 +40,172 @@
     const BUTTON_ADAPTER_CONFIG = {
         targetButtons: 'button.ant-btn',
         targetButtonTexts: ['Forbid', 'Rename', 'Punish'],
-        containerSelector: '.ant-space-item, .ant-space',
-        rowSelector: 'td.ant-table-cell, tr',
-        transitionDuration: '1ms',
-        checkInterval: 300,
-        minHeightThreshold: 1,
-        maxButtonHeight: 140,
-        minButtonHeight: 20,
-        buttonHeightOffset: -18,
-        singleColumnThreshold: 1,
         isEnabled: false,
-        waitForTranslation: true,
-        translationWaitTime: 800,
-        maxRetryCount: 3
+        minButtonHeight: 20,
+        maxButtonHeight: 140,
+        buttonHeightOffset: -18
     };
 
     let isTranslationEnabled = true;
     const translationCache = new Map();
-    let processing = false;
+    let isProcessing = false;
     let processDebounceTimer = null;
     let roleIdColumnIndexes = [];
     let observer = null;
-    let tableMutationObserver = null;
+    
+    // 全局复用的测量容器，避免频繁创建DOM
+    let measureContainer = null;
 
-    // ====== 按钮高度适配相关变量 ======
-    const processedButtons = new Set();
-    let buttonAdapterObserver = null;
-    const processedCopyButtons = new Set();
-    const processedCells = new Set();
-    const pendingButtonAdaptations = new Map();
-
-    // ====== 控制面板状态变量 ======
-    let controlPanelMinimized = true;
+    // ====== 控制面板变量 ======
     let controlPanel = null;
-    let minimizeBtn = null;
-    let contentContainer = null;
-    let panelHeader = null;
+    let controlPanelMinimized = true;
 
-    // ====== 智能滚动相关变量 ======
-    let scrollHandlersAttached = false;
-
-    // ====== 性能监控 ======
-    let performanceStats = {
-        cellsProcessed: 0,
-        translationsCompleted: 0,
-        buttonsAdapted: 0,
-        startTime: 0
-    };
-
-    // ====== 日志函数 ======
-    function log(level, message, data) {
-        const levels = { debug: 0, info: 1, warn: 2, error: 3 };
-        const currentLevel = levels[PERFORMANCE_CONFIG.logLevel] || 1;
-        const messageLevel = levels[level] || 1;
-
-        if (messageLevel >= currentLevel) {
-            if (data) {
-                console[level](`🔧 ${message}`, data);
-            } else {
-                console[level](`🔧 ${message}`);
-            }
-        }
+    function log(msg, data) {
+        // console.log(`[翻译助手] ${msg}`, data || '');
     }
 
     function init() {
-        log('info', `工作台翻译与复制助手 v8.0.6 已加载 - 修复role_id列复制按钮和相同内容处理`);
-        performanceStats.startTime = Date.now();
+        console.log('工作台翻译助手 v8.1.0 (性能优化版) 已加载');
         loadSettings();
         addGlobalStyle();
+        createMeasureContainer(); // 创建全局测量容器
         bindShortcut();
-        startStableMonitoring();
-        setupTableSortDetection();
-        initButtonHeightAdapter();
         createControlPanel();
-
+        startStableMonitoring();
+        
+        // 延迟初始化滚动处理
         setTimeout(() => {
             initSmartScrollHandling();
+            processAllCellsInBatches();
         }, 2000);
     }
 
-    // ====== 修复的智能滚动处理 ======
+    // ====== 全局测量容器 (性能优化关键) ======
+    function createMeasureContainer() {
+        if (measureContainer) return;
+        measureContainer = document.createElement('div');
+        measureContainer.id = 'global-text-measure-container';
+        measureContainer.style.cssText = `
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            visibility: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.1;
+            padding: 4px 6px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: -1;
+        `;
+        document.body.appendChild(measureContainer);
+    }
+
+    // ====== 智能滚动处理 ======
     function initSmartScrollHandling() {
-        if (!PERFORMANCE_CONFIG.smartScrollEnabled || scrollHandlersAttached) {
-            return;
-        }
-
-        log('info', '初始化优化的智能滚动处理...');
-
-        const handleWheelEvent = (e) => {
-            let target = e.target;
-            let isFixedHeightCell = false;
-
-            for (let i = 0; i < 3 && target && target !== document.body; i++) {
-                if (target.classList && target.classList.contains('fixed-height-cell')) {
-                    isFixedHeightCell = true;
-                    break;
-                }
-                target = target.parentElement;
-            }
-
-            if (isFixedHeightCell) {
-                const fixedHeightCell = e.target.closest('.fixed-height-cell');
-                if (fixedHeightCell && fixedHeightCell.scrollHeight > fixedHeightCell.clientHeight) {
-                    e.preventDefault();
+        if (!PERFORMANCE_CONFIG.smartScrollEnabled) return;
+        
+        // 使用 passive: false 来允许 preventDefault，但仅在必要时
+        const handleWheel = (e) => {
+            const target = e.target;
+            const fixedHeightCell = target.closest('.fixed-height-cell');
+            
+            if (fixedHeightCell && fixedHeightCell.scrollHeight > fixedHeightCell.clientHeight) {
+                // 只有当在滚动容器内且需要滚动时才阻止冒泡
+                const isScrollTop = fixedHeightCell.scrollTop === 0;
+                const isScrollBottom = Math.abs(fixedHeightCell.scrollHeight - fixedHeightCell.scrollTop - fixedHeightCell.clientHeight) < 1;
+                
+                // 如果向上滚动且在顶部，或向下滚动且在底部，则让外层处理（不阻止）
+                // 否则，阻止外层滚动，只滚动内部
+                const delta = e.deltaY || e.detail || (e.wheelDelta ? -e.wheelDelta : 0);
+                if ((delta < 0 && !isScrollTop) || (delta > 0 && !isScrollBottom)) {
                     e.stopPropagation();
-
-                    const delta = e.deltaY || e.detail || (e.wheelDelta ? -e.wheelDelta / 40 : 0);
-                    fixedHeightCell.scrollTop += delta * 0.8;
                 }
             }
         };
 
-        const passiveOptions = { passive: false, capture: true };
-        document.addEventListener('wheel', handleWheelEvent, passiveOptions);
-        document.addEventListener('mousewheel', handleWheelEvent, passiveOptions);
-
-        scrollHandlersAttached = true;
-        log('info', '智能滚动处理已启用（优化版）');
+        document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
     }
 
-    function disableSmartScrollHandling() {
-        if (!scrollHandlersAttached) return;
-
-        const events = ['wheel', 'mousewheel', 'DOMMouseScroll'];
-        events.forEach(event => {
-            document.removeEventListener(event, handleWheelEvent, { capture: true });
-        });
-
-        scrollHandlersAttached = false;
-        log('info', '智能滚动处理已禁用');
-    }
-
-    // ====== 加载设置 ======
     function loadSettings() {
         try {
-            const savedMinFontSize = GM_getValue('minFontSize');
-            const savedMaxFontSize = GM_getValue('maxFontSize');
-            const savedCharLimit = GM_getValue('charLimit');
-            const savedTranslationEnabled = GM_getValue('translationEnabled');
-            const savedButtonAdapterEnabled = GM_getValue('buttonAdapterEnabled');
-            const savedPanelMinimized = GM_getValue('panelMinimized');
-            const savedSmartScrollEnabled = GM_getValue('smartScrollEnabled');
-
-            if (savedMinFontSize !== undefined) MIN_FONT_SIZE = savedMinFontSize;
-            if (savedMaxFontSize !== undefined) MAX_FONT_SIZE = savedMaxFontSize;
-            if (savedCharLimit !== undefined) SINGLE_LINE_CHAR_LIMIT = savedCharLimit;
-            if (savedTranslationEnabled !== undefined) isTranslationEnabled = savedTranslationEnabled;
-            if (savedButtonAdapterEnabled !== undefined) BUTTON_ADAPTER_CONFIG.isEnabled = savedButtonAdapterEnabled;
-            if (savedPanelMinimized !== undefined) controlPanelMinimized = savedPanelMinimized;
-            if (savedSmartScrollEnabled !== undefined) PERFORMANCE_CONFIG.smartScrollEnabled = savedSmartScrollEnabled;
-        } catch (error) {
-            log('warn', '加载设置失败，使用默认值:', error);
-        }
+            const savedTranslation = GM_getValue('translationEnabled');
+            const savedAdapter = GM_getValue('buttonAdapterEnabled');
+            const savedPanel = GM_getValue('panelMinimized');
+            
+            if (savedTranslation !== undefined) isTranslationEnabled = savedTranslation;
+            if (savedAdapter !== undefined) BUTTON_ADAPTER_CONFIG.isEnabled = savedAdapter;
+            if (savedPanel !== undefined) controlPanelMinimized = savedPanel;
+            
+            // 读取字体设置
+            const minFont = GM_getValue('minFontSize');
+            if (minFont) MIN_FONT_SIZE = minFont;
+            const maxFont = GM_getValue('maxFontSize');
+            if (maxFont) MAX_FONT_SIZE = maxFont;
+        } catch (e) { console.error(e); }
     }
 
-    // ====== 保存设置 ======
     function saveSettings() {
-        try {
-            GM_setValue('minFontSize', MIN_FONT_SIZE);
-            GM_setValue('maxFontSize', MAX_FONT_SIZE);
-            GM_setValue('charLimit', SINGLE_LINE_CHAR_LIMIT);
-            GM_setValue('translationEnabled', isTranslationEnabled);
-            GM_setValue('buttonAdapterEnabled', BUTTON_ADAPTER_CONFIG.isEnabled);
-            GM_setValue('panelMinimized', controlPanelMinimized);
-            GM_setValue('smartScrollEnabled', PERFORMANCE_CONFIG.smartScrollEnabled);
-        } catch (error) {
-            log('warn', '保存设置失败:', error);
-        }
+        GM_setValue('translationEnabled', isTranslationEnabled);
+        GM_setValue('buttonAdapterEnabled', BUTTON_ADAPTER_CONFIG.isEnabled);
+        GM_setValue('panelMinimized', controlPanelMinimized);
+        GM_setValue('minFontSize', MIN_FONT_SIZE);
+        GM_setValue('maxFontSize', MAX_FONT_SIZE);
     }
 
-    // ====== 创建控制面板 ======
-    function createControlPanel() {
-        controlPanel = document.createElement('div');
-        controlPanel.id = 'translation-assistant-control-panel';
-        controlPanel.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.15);
-            border-radius: 8px;
-            padding: 0;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            font-size: 12px;
-            color: #333;
-            min-width: 30px;
-            width: 30px;
-            height: 30px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            overflow: hidden;
-        `;
-
-        const miniButton = document.createElement('div');
-        miniButton.id = 'control-panel-mini-button';
-        miniButton.style.cssText = `
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            color: #1890ff;
-            background: rgba(24, 144, 255, 0.1);
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        `;
-        miniButton.textContent = '+';
-        miniButton.title = '展开控制面板 (快捷键: -)';
-
-        miniButton.addEventListener('mouseover', () => {
-            miniButton.style.background = 'rgba(24, 144, 255, 0.2)';
-        });
-
-        miniButton.addEventListener('mouseout', () => {
-            miniButton.style.background = 'rgba(24, 144, 255, 0.1)';
-        });
-
-        miniButton.addEventListener('click', toggleControlPanel);
-
-        panelHeader = document.createElement('div');
-        panelHeader.style.cssText = `
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(24, 144, 255, 0.1) 100%);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px 8px 0 0;
-            cursor: move;
-        `;
-
-        const title = document.createElement('div');
-        title.style.cssText = `
-            font-weight: bold;
-            color: #1890ff;
-            font-size: 13px;
-        `;
-        title.textContent = '🔧 翻译助手';
-
-        minimizeBtn = document.createElement('button');
-        minimizeBtn.style.cssText = `
-            background: none;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #666;
-            transition: all 0.2s ease;
-            font-weight: bold;
-        `;
-        minimizeBtn.textContent = '−';
-        minimizeBtn.title = '最小化面板';
-        minimizeBtn.onmouseover = () => {
-            minimizeBtn.style.background = 'rgba(24, 144, 255, 0.1)';
-        };
-        minimizeBtn.onmouseout = () => {
-            minimizeBtn.style.background = 'none';
-        };
-        minimizeBtn.onclick = toggleControlPanel;
-
-        panelHeader.appendChild(title);
-        panelHeader.appendChild(minimizeBtn);
-
-        contentContainer = document.createElement('div');
-        contentContainer.style.cssText = `
-            display: none;
-            padding: 16px;
-            max-height: 400px;
-            overflow-y: auto;
-            background: rgba(255, 255, 255, 0.95);
-        `;
-
-        contentContainer.innerHTML = `
-            <div style="margin-bottom: 16px;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: #333;">基础功能</div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: flex; align-items: center; cursor: pointer; margin-bottom: 4px;">
-                        <input type="checkbox" id="translation-toggle" ${isTranslationEnabled ? 'checked' : ''}
-                               style="margin-right: 8px; transform: scale(1.1);">
-                        <span>启用翻译功能</span>
-                    </label>
-                </div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="button-height-adapter-toggle"
-                               ${BUTTON_ADAPTER_CONFIG.isEnabled ? 'checked' : ''}
-                               style="margin-right: 8px; transform: scale(1.1);">
-                        <span>启用按钮高度适配</span>
-                    </label>
-                </div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="smart-scroll-toggle" ${PERFORMANCE_CONFIG.smartScrollEnabled ? 'checked' : ''}
-                               style="margin-right: 8px; transform: scale(1.1);">
-                        <span>启用智能滚动兼容</span>
-                    </label>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 16px;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: #333;">字体设置</div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: block; margin-bottom: 4px; font-size: 11px; color: #666;">最小字体大小</label>
-                    <input type="number" id="min-font-size" value="${MIN_FONT_SIZE}" min="10" max="24"
-                           style="width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                </div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: block; margin-bottom: 4px; font-size: 11px; color: #666;">最大字体大小</label>
-                    <input type="number" id="max-font-size" value="${MAX_FONT_SIZE}" min="20" max="48"
-                           style="width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                </div>
-
-                <div>
-                    <label style="display: block; margin-bottom: 4px; font-size: 11px; color: #666;">单行字符数限制</label>
-                    <input type="number" id="single-line-char-limit" value="${SINGLE_LINE_CHAR_LIMIT}" min="20" max="120"
-                           style="width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                </div>
-            </div>
-
-            <div style="margin-bottom: 16px;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: #333;">性能设置</div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: block; margin-bottom: 4px; font-size: 11px; color: #666;">日志级别</label>
-                    <select id="log-level" style="width: 100%; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                        <option value="error">仅错误</option>
-                        <option value="warn">警告和错误</option>
-                        <option value="info" selected>信息</option>
-                        <option value="debug">调试</option>
-                    </select>
-                </div>
-
-                <div style="margin-bottom: 8px;">
-                    <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="performance-monitor-toggle"
-                               ${PERFORMANCE_CONFIG.enablePerformanceMonitor ? 'checked' : ''}
-                               style="margin-right: 8px; transform: scale(1.1);">
-                        <span>启用性能监控</span>
-                    </label>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 12px;">
-                <button id="apply-settings-btn"
-                        style="width: 100%; padding: 8px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-bottom: 8px;">
-                    应用设置
-                </button>
-                <button id="reset-settings-btn"
-                        style="width: 100%; padding: 6px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                    重置为默认
-                </button>
-            </div>
-
-            <div style="margin-bottom: 12px; padding: 8px; background: rgba(24, 144, 255, 0.05); border-radius: 4px; font-size: 11px;">
-                <div style="font-weight: bold; margin-bottom: 4px; color: #666;">快捷键</div>
-                <div>Alt+Z: 开关翻译</div>
-                <div>=: 开关按钮高度适配</div>
-                <div>-: 开关控制面板</div>
-            </div>
-
-            <div style="font-size: 10px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 8px;">
-                v8.0.6 | 修复role_id列复制按钮和相同内容处理
-            </div>
-        `;
-
-        controlPanel.appendChild(miniButton);
-        controlPanel.appendChild(panelHeader);
-        controlPanel.appendChild(contentContainer);
-        document.body.appendChild(controlPanel);
-
-        addDragFunctionality(controlPanel, panelHeader);
-        bindControlPanelEvents();
-
-        if (controlPanelMinimized) {
-            minimizeControlPanel();
-        } else {
-            expandControlPanel();
-        }
-    }
-
-    function minimizeControlPanel() {
-        const miniButton = controlPanel.querySelector('#control-panel-mini-button');
-        if (miniButton) miniButton.style.display = 'flex';
-        contentContainer.style.display = 'none';
-        panelHeader.style.display = 'none';
-        controlPanel.style.minWidth = '30px';
-        controlPanel.style.width = '30px';
-        controlPanel.style.height = '30px';
-        controlPanelMinimized = true;
-        saveSettings();
-    }
-
-    function expandControlPanel() {
-        const miniButton = controlPanel.querySelector('#control-panel-mini-button');
-        if (miniButton) miniButton.style.display = 'none';
-        contentContainer.style.display = 'block';
-        panelHeader.style.display = 'flex';
-        controlPanel.style.minWidth = '240px';
-        controlPanel.style.width = '280px';
-        controlPanel.style.height = '';
-        controlPanelMinimized = false;
-        saveSettings();
-    }
-
-    function toggleControlPanel() {
-        if (controlPanelMinimized) {
-            expandControlPanel();
-        } else {
-            minimizeControlPanel();
-        }
-    }
-
-    function addDragFunctionality(panel, handle) {
-        let isDragging = false;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-
-        handle.onmousedown = (e) => {
-            isDragging = true;
-            dragOffsetX = e.clientX - panel.offsetLeft;
-            dragOffsetY = e.clientY - panel.offsetTop;
-            handle.style.cursor = 'grabbing';
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        };
-
-        function handleMouseMove(e) {
-            if (isDragging) {
-                panel.style.left = (e.clientX - dragOffsetX) + 'px';
-                panel.style.top = (e.clientY - dragOffsetY) + 'px';
-                panel.style.right = 'auto';
-            }
-        }
-
-        function handleMouseUp() {
-            isDragging = false;
-            handle.style.cursor = 'move';
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        }
-    }
-
-    function bindControlPanelEvents() {
-        const translationToggle = controlPanel.querySelector('#translation-toggle');
-        translationToggle.addEventListener('change', (e) => {
-            isTranslationEnabled = e.target.checked;
-            saveSettings();
-            log('info', `翻译功能已${isTranslationEnabled ? '启用' : '禁用'}`);
-
-            if (isTranslationEnabled) {
-                reprocessTranslationsOnly();
-            } else {
-                removeTranslationsOnly();
-            }
-        });
-
-        const buttonHeightToggle = controlPanel.querySelector('#button-height-adapter-toggle');
-        buttonHeightToggle.addEventListener('change', (e) => {
-            BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked;
-            saveSettings();
-            log('info', `按钮高度适配功能已${BUTTON_ADAPTER_CONFIG.isEnabled ? '启用' : '禁用'}`);
-
-            if (BUTTON_ADAPTER_CONFIG.isEnabled) {
-                processedButtons.clear();
-                pendingButtonAdaptations.clear();
-                setTimeout(() => {
-                    initialButtonScan();
-                }, 100);
-            } else {
-                processedButtons.clear();
-                pendingButtonAdaptations.clear();
-                document.querySelectorAll('button[data-height-adapted="true"]').forEach(btn => {
-                    btn.removeAttribute('data-height-adapted');
-                    btn.style.height = '';
-                    btn.style.minHeight = '';
-                    btn.style.lineHeight = '';
-                    btn.style.maxHeight = '';
-                });
-            }
-        });
-
-        const smartScrollToggle = controlPanel.querySelector('#smart-scroll-toggle');
-        smartScrollToggle.addEventListener('change', (e) => {
-            PERFORMANCE_CONFIG.smartScrollEnabled = e.target.checked;
-            saveSettings();
-
-            if (PERFORMANCE_CONFIG.smartScrollEnabled) {
-                initSmartScrollHandling();
-            } else {
-                disableSmartScrollHandling();
-            }
-
-            log('info', `智能滚动兼容已${PERFORMANCE_CONFIG.smartScrollEnabled ? '启用' : '禁用'}`);
-        });
-
-        const logLevelSelect = controlPanel.querySelector('#log-level');
-        logLevelSelect.value = PERFORMANCE_CONFIG.logLevel;
-        logLevelSelect.addEventListener('change', (e) => {
-            PERFORMANCE_CONFIG.logLevel = e.target.value;
-            log('info', `日志级别已设置为: ${PERFORMANCE_CONFIG.logLevel}`);
-        });
-
-        const performanceMonitorToggle = controlPanel.querySelector('#performance-monitor-toggle');
-        performanceMonitorToggle.addEventListener('change', (e) => {
-            PERFORMANCE_CONFIG.enablePerformanceMonitor = e.target.checked;
-            log('info', `性能监控已${PERFORMANCE_CONFIG.enablePerformanceMonitor ? '启用' : '禁用'}`);
-        });
-
-        const applyBtn = controlPanel.querySelector('#apply-settings-btn');
-        applyBtn.addEventListener('click', () => {
-            applySettings();
-        });
-
-        const resetBtn = controlPanel.querySelector('#reset-settings-btn');
-        resetBtn.addEventListener('click', () => {
-            resetSettings();
-        });
-    }
-
-    function applySettings() {
-        const minFontInput = controlPanel.querySelector('#min-font-size');
-        const maxFontInput = controlPanel.querySelector('#max-font-size');
-        const charLimitInput = controlPanel.querySelector('#single-line-char-limit');
-
-        const newMinFont = parseInt(minFontInput.value);
-        const newMaxFont = parseInt(maxFontInput.value);
-        const newCharLimit = parseInt(charLimitInput.value);
-
-        if (newMinFont >= 10 && newMinFont <= 24 &&
-            newMaxFont >= 20 && newMaxFont <= 48 &&
-            newMinFont < newMaxFont &&
-            newCharLimit >= 20 && newCharLimit <= 120) {
-
-            MIN_FONT_SIZE = newMinFont;
-            MAX_FONT_SIZE = newMaxFont;
-            SINGLE_LINE_CHAR_LIMIT = newCharLimit;
-            saveSettings();
-
-            log('info', `设置已应用: 字体${MIN_FONT_SIZE}-${MAX_FONT_SIZE}px, 单行字符数${SINGLE_LINE_CHAR_LIMIT}`);
-            adjustFontSizesOnly();
-            showNotification('设置已应用', 'success');
-        } else {
-            showNotification('设置无效，请检查输入值', 'error');
-        }
-    }
-
-    function resetSettings() {
-        MIN_FONT_SIZE = 16;
-        MAX_FONT_SIZE = 32;
-        SINGLE_LINE_CHAR_LIMIT = 60;
-        isTranslationEnabled = true;
-        BUTTON_ADAPTER_CONFIG.isEnabled = false;
-        PERFORMANCE_CONFIG.logLevel = 'info';
-        PERFORMANCE_CONFIG.enablePerformanceMonitor = false;
-        PERFORMANCE_CONFIG.smartScrollEnabled = true;
-
-        controlPanel.querySelector('#min-font-size').value = MIN_FONT_SIZE;
-        controlPanel.querySelector('#max-font-size').value = MAX_FONT_SIZE;
-        controlPanel.querySelector('#single-line-char-limit').value = SINGLE_LINE_CHAR_LIMIT;
-        controlPanel.querySelector('#translation-toggle').checked = isTranslationEnabled;
-        controlPanel.querySelector('#button-height-adapter-toggle').checked = BUTTON_ADAPTER_CONFIG.isEnabled;
-        controlPanel.querySelector('#smart-scroll-toggle').checked = PERFORMANCE_CONFIG.smartScrollEnabled;
-        controlPanel.querySelector('#log-level').value = PERFORMANCE_CONFIG.logLevel;
-        controlPanel.querySelector('#performance-monitor-toggle').checked = PERFORMANCE_CONFIG.enablePerformanceMonitor;
-
-        saveSettings();
-        adjustFontSizesOnly();
-
-        if (BUTTON_ADAPTER_CONFIG.isEnabled) {
-            initialButtonScan();
-        } else {
-            const adaptedButtons = document.querySelectorAll('button[data-height-adapted="true"]');
-            adaptedButtons.forEach(btn => {
-                btn.removeAttribute('data-height-adapted');
-                btn.style.height = '';
-                btn.style.minHeight = '';
-                btn.style.lineHeight = '';
-                btn.style.maxHeight = '';
-            });
-            processedButtons.clear();
-            pendingButtonAdaptations.clear();
-        }
-
-        if (PERFORMANCE_CONFIG.smartScrollEnabled) {
-            initSmartScrollHandling();
-        }
-
-        log('info', '设置已重置为默认值');
-        showNotification('设置已重置', 'success');
-    }
-
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 10001;
-            padding: 8px 16px;
-            background: ${type === 'success' ? '#52c41a' : type === 'error' ? '#ff4d4f' : '#1890ff'};
-            color: white;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            animation: slideInRight 0.3s ease-out;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        `;
-        notification.textContent = message;
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 2000);
-    }
-
-    // ====== 修复的稳定监控系统 ======
+    // ====== 核心监控逻辑 (优化版) ======
     function startStableMonitoring() {
-        log('info', '启动稳定监控系统...');
-
+        // 核心优化：忽略 Popover/Tooltip 等引起的高频 DOM 变动
+        const ignoreSelectors = ['.ant-popover', '.ant-tooltip', '.ant-dropdown', '.ant-message', 'script', 'style'];
+        
         observer = new MutationObserver((mutations) => {
             let shouldProcess = false;
+            let isTableUpdate = false;
 
             for (const mutation of mutations) {
+                // 1. 如果变更的目标是忽略列表中的元素，直接跳过
+                const target = mutation.target;
+                if (target.nodeType === 1) {
+                    if (ignoreSelectors.some(sel => target.closest(sel) || target.matches(sel))) {
+                        continue;
+                    }
+                }
+
+                // 2. 检查是否是表格相关的变更
                 if (mutation.type === 'childList') {
+                    // 检查增加的节点
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType === 1) {
-                            if (node.matches && (
-                                node.matches('.ant-table-tbody') ||
-                                node.matches('.ant-table-tbody tr') ||
-                                node.matches('.ant-table') ||
-                                node.querySelector('.ant-table-tbody')
-                            )) {
-                                shouldProcess = true;
+                            if (node.tagName === 'TR' || node.tagName === 'TD' || node.classList.contains('ant-table-tbody')) {
+                                isTableUpdate = true;
+                                break;
+                            }
+                            // 检查是否包含了表格
+                            if (node.querySelector && node.querySelector('.ant-table-tbody')) {
+                                isTableUpdate = true;
                                 break;
                             }
                         }
                     }
                 }
+                
+                if (isTableUpdate) {
+                    shouldProcess = true;
+                    break;
+                }
             }
 
             if (shouldProcess) {
-                log('debug', '检测到表格更新，处理新内容...');
                 scheduleProcessNewCells();
-                setTimeout(() => {
-                    findRoleIdColumns();
-                    addCopyButtonsToRoleIdColumns();
-                    addRoleIdOnlyCopyButtons(); // 添加role_id列仅复制按钮
-                }, 500);
             }
         });
 
         observer.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
+            attributes: false // 不监听属性变化，减少触发
         });
-
-        setTimeout(() => {
-            processAllCellsInBatches();
-            findRoleIdColumns();
-            addCopyButtonsToRoleIdColumns();
-            addRoleIdOnlyCopyButtons(); // 添加role_id列仅复制按钮
-        }, 1500);
-    }
-
-    function processAllCellsInBatches() {
-        if (processing) return;
-        processing = true;
-
-        const startTime = Date.now();
-        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
-        const unprocessed = allCells.filter(cell => {
-            const text = getCleanCellText(cell);
-            const cellKey = getCellKey(cell);
-            return text && text.length >= 2 && !processedCells.has(cellKey);
-        });
-
-        log('info', `处理 ${Math.min(unprocessed.length, PERFORMANCE_CONFIG.maxCellsPerBatch)} 个第8列单元格`);
-
-        const cellsToProcess = unprocessed.slice(0, PERFORMANCE_CONFIG.maxCellsPerBatch);
-
-        for (const cell of cellsToProcess) {
-            wrapCellContent(cell);
-            const cellKey = getCellKey(cell);
-            processedCells.add(cellKey);
-            performanceStats.cellsProcessed++;
-        }
-
-        for (let i = 0; i < cellsToProcess.length; i += BATCH_SIZE) {
-            const batch = cellsToProcess.slice(i, i + BATCH_SIZE);
-            setTimeout(() => {
-                for (const cell of batch) {
-                    const text = getCleanCellText(cell);
-                    if (!text || text.length < 2) continue;
-
-                    adjustFontSizeForCell(cell);
-
-                    if (isTranslationEnabled && cell.dataset.translated !== 'true') {
-                        translateIfNeeded(cell);
-                    }
-
-                    if (BUTTON_ADAPTER_CONFIG.isEnabled && BUTTON_ADAPTER_CONFIG.waitForTranslation) {
-                        scheduleButtonAdaptationForRow(cell.closest('tr'));
-                    }
-                }
-            }, 0);
-        }
-
-        processing = false;
-
-        if (PERFORMANCE_CONFIG.enablePerformanceMonitor) {
-            const endTime = Date.now();
-            log('debug', `单元格处理完成，耗时: ${endTime - startTime}ms`);
-        }
-    }
-
-    // ====== 修复：使用更唯一的单元格标识 ======
-    function getCellKey(cell) {
-        const row = cell.closest('tr');
-        const rowIndex = row ? Array.from(row.parentElement.children).indexOf(row) : 'unknown';
-        const columnIndex = Array.from(cell.parentElement.children).indexOf(cell) + 1;
-        const text = getCleanCellText(cell);
-        // 使用行索引、列索引和文本内容创建唯一键
-        return `${rowIndex}-${columnIndex}-${text}`;
     }
 
     function scheduleProcessNewCells() {
@@ -793,1192 +214,259 @@
         }
         processDebounceTimer = setTimeout(() => {
             processAllCellsInBatches();
+            findRoleIdColumns();
+            if (roleIdColumnIndexes.length > 0) {
+                addCopyButtonsToRoleIdColumns();
+                addRoleIdOnlyCopyButtons();
+            }
         }, PERFORMANCE_CONFIG.debounceDelay);
     }
 
-    // ====== 修复的翻译处理函数 ======
-    function reprocessTranslationsOnly() {
-        log('info', '只重新翻译第8列内容...');
-        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
+    // ====== 单元格处理逻辑 ======
+    function processAllCellsInBatches() {
+        if (isProcessing) return;
+        isProcessing = true;
 
-        allCells.forEach(cell => {
-            const container = cell.querySelector('.fixed-height-cell');
-            if (!container) return;
+        try {
+            // 获取所有未处理的第8列单元格
+            // 修复：不再依赖 Set 去重，而是直接检查 dataset 标记，解决相同内容行不处理的问题
+            const allTargetCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}):not([data-processed="true"])`);
+            
+            const cellsToProcess = Array.from(allTargetCells).slice(0, PERFORMANCE_CONFIG.maxCellsPerBatch);
 
-            const translationSpan = container.querySelector('.translation');
-            if (translationSpan) {
-                translationSpan.remove();
-            }
+            if (cellsToProcess.length > 0) {
+                // 第一步：同步进行轻量级的 DOM 结构包装
+                cellsToProcess.forEach(cell => {
+                    const text = getCleanCellText(cell);
+                    if (text && text.length > 1) {
+                        wrapCellContent(cell, text);
+                        cell.dataset.processed = 'true'; // 标记已处理
+                    }
+                });
 
-            cell.dataset.translated = '';
-            translateIfNeeded(cell);
-        });
-    }
-
-    function removeTranslationsOnly() {
-        log('info', '只移除第8列翻译内容...');
-        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
-
-        allCells.forEach(cell => {
-            const container = cell.querySelector('.fixed-height-cell');
-            if (!container) return;
-
-            const translationSpan = container.querySelector('.translation');
-            if (translationSpan) {
-                translationSpan.remove();
-            }
-
-            cell.dataset.translated = 'false';
-            adjustFontSizeForCell(cell);
-        });
-    }
-
-    function adjustFontSizesOnly() {
-        log('info', '只调整第8列字体大小...');
-        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
-
-        allCells.forEach(cell => {
-            adjustFontSizeForCell(cell);
-        });
-    }
-
-    // ====== 修复的全局样式 - 只影响第8列 ======
-    function addGlobalStyle() {
-        const style = document.createElement('style');
-        style.textContent = `
-            /* 只针对第8列的特殊处理 */
-            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) {
-                position: relative !important;
-                vertical-align: top !important;
-                text-align: left !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                line-height: normal !important;
-                white-space: normal !important;
-                overflow: visible !important;
-                pointer-events: auto !important;
-                box-sizing: border-box !important;
-                height: auto !important;
-                min-height: auto !important;
-                max-height: none !important;
-            }
-
-            .ant-table-thead > tr > th:nth-child(${COLUMN_INDEX}) {
-                vertical-align: middle !important;
-                text-align: center !important;
-                padding: 8px !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                line-height: normal !important;
-                height: auto !important;
-                min-height: auto !important;
-                max-height: none !important;
-            }
-
-            /* role_id列样式 */
-            .ant-table-tbody > tr > td[data-is-role-id="true"] {
-                position: relative !important;
-            }
-
-            /* 其他列保持原样，不应用任何特殊样式 */
-            .ant-table-container,
-            .ant-table-content,
-            .ant-table-body {
-                overflow: auto !important;
-            }
-
-            .fixed-height-cell {
-                position: relative;
-                width: 100%;
-                max-height: ${MAX_CELL_HEIGHT}px;
-                overflow-y: auto;
-                overflow-x: hidden;
-                padding: 4px 6px;
-                box-sizing: border-box;
-                line-height: 1.1;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                font-size: ${MIN_FONT_SIZE}px;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            }
-
-            .fixed-height-cell.single-line {
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                height: ${SINGLE_LINE_HEIGHT}px;
-                line-height: ${SINGLE_LINE_HEIGHT}px;
-            }
-
-            .fixed-height-cell.no-scroll {
-                overflow: hidden;
-            }
-
-            .fixed-height-cell .original {
-                display: inline;
-                font-weight: normal;
-            }
-
-            .fixed-height-cell .translation {
-                display: inline;
-                font-weight: bold !important;
-                margin-left: 8px;
-            }
-
-            .fixed-height-cell.long-text {
-                cursor: pointer;
-                background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.1) 100%);
-                border-radius: 4px;
-                border: 1px solid rgba(24, 144, 255, 0.2);
-                transition: all 0.2s ease;
-            }
-
-            .fixed-height-cell.long-text:hover {
-                background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.2) 100%);
-                border-color: rgba(24, 144, 255, 0.4);
-            }
-
-            .fixed-height-cell.${EXPANDED_CLASS} {
-                max-height: none !important;
-                overflow: visible !important;
-                background: rgba(24, 144, 255, 0.05);
-                border: 1px solid rgba(24, 144, 255, 0.3);
-                border-radius: 6px;
-                padding: 8px;
-            }
-
-            .fixed-height-cell.${EXPANDED_CLASS} .original,
-            .fixed-height-cell.${EXPANDED_CLASS} .translation {
-                display: block;
-                margin: 4px 0;
-                word-break: break-word;
-            }
-
-            /* 第8列复制按钮 */
-            .${COPY_BTN_CLASS} {
-                position: absolute;
-                top: 4px;
-                right: 4px;
-                width: 32px;
-                height: 35px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(0, 0, 0, 0.1);
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 14px;
-                transition: all 0.2s ease;
-                z-index: 10;
-            }
-
-            .${COPY_BTN_CLASS}:hover {
-                background: rgba(255, 255, 255, 0.6);
-                border-color: rgba(24, 144, 255, 0.3);
-                transform: scale(1.1);
-            }
-
-            .${COPY_BTN_CLASS}.copied {
-                background: rgba(82, 196, 26, 0.9);
-                color: white;
-                border-color: #52c41a;
-            }
-
-            .${COPY_BTN_CLASS}.error {
-                background: rgba(255, 77, 79, 0.9);
-                color: white;
-                border-color: #ff4d4f;
-            }
-
-            /* role_id列组合复制按钮 */
-            .${ROLE_COPY_BTN_CLASS} {
-                position: absolute;
-                top: 4px;
-                right: 4px;
-                width: 28px;
-                height: 30px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(0, 0, 0, 0.1);
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: bold;
-                transition: all 0.2s ease;
-                z-index: 10;
-                color: #666;
-            }
-
-            .${ROLE_COPY_BTN_CLASS}:hover {
-                background: rgba(255, 255, 255, 0.6);
-                border-color: rgba(24, 144, 255, 0.3);
-                transform: scale(1.1);
-                color: #1890ff;
-            }
-
-            .${ROLE_COPY_BTN_CLASS}.copied {
-                background: rgba(82, 196, 26, 0.9);
-                color: white;
-                border-color: #52c41a;
-            }
-
-            .${ROLE_COPY_BTN_CLASS}.error {
-                background: rgba(255, 77, 79, 0.9);
-                color: white;
-                border-color: #ff4d4f;
-            }
-
-            /* role_id列仅复制按钮 */
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS} {
-                position: absolute;
-                top: 4px;
-                left: 4px;
-                width: 30px;
-                height: 30px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(0, 0, 0, 0.1);
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: bold;
-                transition: all 0.2s ease;
-                z-index: 10;
-                color: #666;
-            }
-
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS}:hover {
-                background: rgba(255, 255, 255, 0.6);
-                border-color: rgba(24, 144, 255, 0.3);
-                transform: scale(1.1);
-                color: #1890ff;
-            }
-
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS}.copied {
-                background: rgba(82, 196, 26, 0.9);
-                color: white;
-                border-color: #52c41a;
-            }
-
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS}.error {
-                background: rgba(255, 77, 79, 0.9);
-                color: white;
-                border-color: #ff4d4f;
-            }
-
-            button.ant-btn[data-height-adapted="true"] {
-                transition: height ${BUTTON_ADAPTER_CONFIG.transitionDuration} ease-in-out !important;
-                box-sizing: border-box !important;
-                overflow: hidden !important;
-            }
-
-            #translation-assistant-control-panel {
-                animation: slideIn 0.3s ease-out;
-            }
-
-            #control-panel-mini-button:hover {
-                background: rgba(24, 144, 255, 0.2) !important;
-                transform: scale(1.05);
-            }
-
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-
-            @keyframes slideInRight {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-
-            @keyframes slideOutRight {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-
-            .fixed-height-cell::-webkit-scrollbar {
-                width: 6px;
-                height: 6px;
-            }
-
-            .fixed-height-cell::-webkit-scrollbar-track {
-                background: rgba(0, 0, 0, 0.05);
-                border-radius: 3px;
-            }
-
-            .fixed-height-cell::-webkit-scrollbar-thumb {
-                background: rgba(0, 0, 0, 0.2);
-                border-radius: 3px;
-            }
-
-            .fixed-height-cell::-webkit-scrollbar-thumb:hover {
-                background: rgba(0, 0, 0, 0.3);
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // ====== 新增：role_id列仅复制按钮功能 ======
-    function addRoleIdOnlyCopyButtons() {
-        log('info', '为role_id列添加仅复制按钮...');
-
-        if (roleIdColumnIndexes.length === 0) {
-            findRoleIdColumns();
-        }
-
-        roleIdColumnIndexes.forEach(columnIndex => {
-            const roleCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${columnIndex})`);
-
-            roleCells.forEach((cell, index) => {
-                // 标记为role_id列
-                cell.setAttribute('data-is-role-id', 'true');
-
-                // 清除现有的仅复制按钮
-                clearRoleIdOnlyCopyButtons(cell);
-
-                const roleText = getCleanCellText(cell);
-                if (roleText && roleText.trim()) {
-                    addRoleIdOnlyCopyButton(cell, roleText.trim());
-                }
-            });
-        });
-    }
-
-    function clearRoleIdOnlyCopyButtons(cell) {
-        const existingBtns = cell.querySelectorAll(`.${ROLE_ID_ONLY_COPY_BTN_CLASS}`);
-        existingBtns.forEach(btn => btn.remove());
-    }
-
-    function addRoleIdOnlyCopyButton(cell, roleText) {
-        // 检查是否已经存在相同类型的按钮
-        if (cell.querySelector(`.${ROLE_ID_ONLY_COPY_BTN_CLASS}`)) return;
-
-        const copyBtn = document.createElement('div');
-        copyBtn.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
-        copyBtn.title = '点击复制role_id';
-        copyBtn.textContent = '-';
-
-        // 添加唯一标识
-        copyBtn.setAttribute('data-button-type', 'role-id-only');
-
-        copyBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-
-            try {
-                await navigator.clipboard.writeText(roleText);
-                copyBtn.textContent = '✓';
-                copyBtn.classList.add('copied');
+                // 第二步：异步进行耗时的计算和翻译
                 setTimeout(() => {
-                    copyBtn.textContent = '-';
-                    copyBtn.classList.remove('copied');
-                }, 1000);
-            } catch (err) {
-                log('warn', '复制role_id失败:', err);
-                copyBtn.textContent = '✗';
-                copyBtn.classList.add('error');
-                setTimeout(() => {
-                    copyBtn.textContent = '-';
-                    copyBtn.classList.remove('error');
-                }, 1000);
-            }
-        });
-
-        cell.style.position = 'relative';
-        cell.appendChild(copyBtn);
-    }
-
-    // ====== 智能按钮高度适配功能 ======
-    function initButtonHeightAdapter() {
-        log('info', '初始化智能按钮高度适配功能...');
-
-        setTimeout(() => {
-            if (BUTTON_ADAPTER_CONFIG.isEnabled) {
-                initialButtonScan();
-                setInterval(periodicButtonCheck, BUTTON_ADAPTER_CONFIG.checkInterval);
-
-                buttonAdapterObserver = new MutationObserver((mutations) => {
-                    let shouldCheck = false;
-                    mutations.forEach(mutation => {
-                        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                            shouldCheck = true;
+                    cellsToProcess.forEach(cell => {
+                        if (cell.dataset.processed === 'true') {
+                            adjustFontSizeForCell(cell);
+                            if (isTranslationEnabled && cell.dataset.translated !== 'true') {
+                                translateIfNeeded(cell);
+                            }
                         }
                     });
-                    if (shouldCheck) {
-                        setTimeout(() => {
-                            if (BUTTON_ADAPTER_CONFIG.isEnabled) {
-                                periodicButtonCheck();
-                            }
-                        }, 100);
+                    
+                    // 如果还有剩余未处理的，继续调度
+                    if (allTargetCells.length > cellsToProcess.length) {
+                        setTimeout(processAllCellsInBatches, 100);
                     }
-                });
-
-                buttonAdapterObserver.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                });
+                }, 0);
             }
-        }, 1500);
-    }
-
-    function isTargetButton(button) {
-        if (!button || !button.textContent) return false;
-        const text = button.textContent.trim();
-        return BUTTON_ADAPTER_CONFIG.targetButtonTexts.some(targetText =>
-            text === targetText || text.includes(targetText)
-        );
-    }
-
-    function getButtonRow(button) {
-        let row = button.closest('tr');
-        if (row) return row;
-
-        row = button.closest('td.ant-table-cell');
-        if (row) {
-            const columnIndex = Array.from(row.parentElement.children).indexOf(row) + 1;
-            if (columnIndex >= COLUMN_INDEX) {
-                return row.parentElement;
-            }
-        }
-
-        row = button.closest('.ant-space-item');
-        if (row) {
-            const spaceContainer = row.closest('.ant-space');
-            if (spaceContainer) {
-                return spaceContainer;
-            }
-            return row;
-        }
-
-        row = button.closest('.ant-row, .ant-btn-group, [class*="row"], [class*="grid"]');
-        if (row) return row;
-
-        return null;
-    }
-
-    function adaptButtonHeight(button) {
-        if (!button || processedButtons.has(button) || !isTargetButton(button) || !BUTTON_ADAPTER_CONFIG.isEnabled) return;
-
-        try {
-            const row = getButtonRow(button);
-            if (!row) return;
-
-            const targetCell = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
-            if (targetCell) {
-                const isTranslated = targetCell.dataset.translated === 'true';
-                const hasTranslation = targetCell.querySelector('.translation');
-
-                if (isTranslationEnabled && !isTranslated && !hasTranslation) {
-                    if (!pendingButtonAdaptations.has(button)) {
-                        pendingButtonAdaptations.set(button, 0);
-                    }
-
-                    const retryCount = pendingButtonAdaptations.get(button);
-                    if (retryCount < BUTTON_ADAPTER_CONFIG.maxRetryCount) {
-                        pendingButtonAdaptations.set(button, retryCount + 1);
-                        setTimeout(() => {
-                            adaptButtonHeight(button);
-                        }, BUTTON_ADAPTER_CONFIG.translationWaitTime);
-                        return;
-                    }
-                }
+            
+            // 按钮适配检查
+            if (BUTTON_ADAPTER_CONFIG.isEnabled) {
+                setTimeout(processAllTargetButtons, 200);
             }
 
-            pendingButtonAdaptations.delete(button);
-
-            const isSingleColumn = isSingleColumnText(row);
-
-            if (isSingleColumn) {
-                const minHeight = BUTTON_ADAPTER_CONFIG.minButtonHeight;
-                button.style.height = minHeight + 'px';
-                button.style.minHeight = 'auto';
-                button.style.lineHeight = minHeight + 'px';
-                button.style.maxHeight = 'none';
-
-                button.setAttribute('data-height-adapted', 'true');
-                processedButtons.add(button);
-                return;
-            }
-
-            let referenceHeight = null;
-            let maxRowHeight = 0;
-
-            if (targetCell) {
-                const cellContainer = targetCell.querySelector('.fixed-height-cell');
-                if (cellContainer) {
-                    referenceHeight = cellContainer.scrollHeight;
-
-                    if (cellContainer.scrollHeight > MAX_CELL_HEIGHT) {
-                        referenceHeight = cellContainer.scrollHeight;
-                    }
-
-                    if (PERFORMANCE_CONFIG.logLevel === 'debug') {
-                        log('debug', `第8列高度: ${referenceHeight}px, 最大高度: ${MAX_CELL_HEIGHT}px`);
-                    }
-                }
-            }
-
-            const allCells = row.querySelectorAll('td.ant-table-cell');
-            allCells.forEach(cell => {
-                const cellHeight = cell.scrollHeight || cell.offsetHeight;
-                maxRowHeight = Math.max(maxRowHeight, cellHeight);
-            });
-
-            if (!referenceHeight) {
-                const textElements = Array.from(row.querySelectorAll('span, div, p, td:not(.ant-table-cell), .ant-table-cell > *')).filter(el => {
-                    return el.offsetWidth > 0 && el.offsetHeight > 0 &&
-                           el !== button &&
-                           el.style.display !== 'none' &&
-                           el.getAttribute('data-height-adapted') !== 'true' &&
-                           !el.classList.contains('ant-btn') &&
-                           el.textContent.trim().length > 0;
-                });
-
-                if (textElements.length === 0) return;
-
-                const heights = textElements.map(el => {
-                    return el.scrollHeight || el.offsetHeight;
-                });
-                referenceHeight = Math.max(...heights);
-            }
-
-            let targetHeight;
-            if (maxRowHeight > 0 && maxRowHeight > referenceHeight) {
-                targetHeight = maxRowHeight - 4;
-            } else {
-                targetHeight = referenceHeight + BUTTON_ADAPTER_CONFIG.buttonHeightOffset;
-            }
-
-            targetHeight = Math.max(
-                BUTTON_ADAPTER_CONFIG.minButtonHeight,
-                Math.min(BUTTON_ADAPTER_CONFIG.maxButtonHeight, targetHeight)
-            );
-
-            const currentHeight = button.getBoundingClientRect().height;
-            if (Math.abs(targetHeight - currentHeight) < BUTTON_ADAPTER_CONFIG.minHeightThreshold) {
-                return;
-            }
-
-            button.style.height = targetHeight + 'px';
-            button.style.minHeight = 'auto';
-            button.style.lineHeight = targetHeight + 'px';
-            button.style.maxHeight = 'none';
-
-            button.setAttribute('data-height-adapted', 'true');
-            processedButtons.add(button);
-            performanceStats.buttonsAdapted++;
-
-            if (PERFORMANCE_CONFIG.logLevel === 'debug') {
-                log('debug', `按钮 "${button.textContent}" 高度适配为: ${targetHeight}px`);
-            }
-
-        } catch (error) {
-            log('warn', '按钮高度适配出错:', error);
+        } catch (e) {
+            console.error('处理单元格出错:', e);
+        } finally {
+            isProcessing = false;
         }
     }
 
-    function isSingleColumnText(row) {
-        try {
-            const allCells = row.querySelectorAll('td.ant-table-cell');
-            if (allCells.length === 0) return false;
-
-            let contentColumnCount = 0;
-            let hasSignificantContent = false;
-            let col8HasContent = false;
-
-            allCells.forEach((cell, index) => {
-                const cellText = getCleanCellText(cell);
-                const hasContainer = cell.querySelector('.fixed-height-cell');
-
-                if (cellText && cellText.trim().length > 0) {
-                    const trimmedText = cellText.trim();
-                    if (trimmedText.length > 0) {
-                        contentColumnCount++;
-                        if (index + 1 === COLUMN_INDEX && hasContainer) {
-                            hasSignificantContent = true;
-                            col8HasContent = true;
-                        }
-                    }
-                }
-            });
-
-            const isSingleColumn = contentColumnCount === BUTTON_ADAPTER_CONFIG.singleColumnThreshold &&
-                                  hasSignificantContent &&
-                                  col8HasContent &&
-                                  contentColumnCount === 1;
-
-            return isSingleColumn;
-        } catch (error) {
-            log('warn', '单列文本检测出错:', error);
-            return false;
-        }
-    }
-
-    function initialButtonScan() {
-        log('info', '开始智能按钮高度适配扫描...');
-        processAllTargetButtons();
-    }
-
-    function periodicButtonCheck() {
-        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
-        processAllTargetButtons();
-    }
-
-    function processAllTargetButtons() {
-        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
-
-        const allButtons = document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
-        let processedCount = 0;
-
-        allButtons.forEach(button => {
-            if (isTargetButton(button) && !processedButtons.has(button)) {
-                adaptButtonHeight(button);
-                processedCount++;
-            }
-        });
-
-        if (processedCount > 0 && PERFORMANCE_CONFIG.logLevel === 'info') {
-            log('info', `适配了 ${processedCount} 个按钮的高度`);
-        }
-    }
-
-    function scheduleButtonAdaptationForRow(row) {
-        if (!row || !BUTTON_ADAPTER_CONFIG.isEnabled) return;
-
-        setTimeout(() => {
-            const buttons = row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
-            buttons.forEach(button => {
-                if (isTargetButton(button) && !processedButtons.has(button)) {
-                    adaptButtonHeight(button);
-                }
-            });
-        }, BUTTON_ADAPTER_CONFIG.translationWaitTime);
-    }
-
-    // ====== 修复的翻译应用函数 ======
-    function applyTranslation(cell, originalText, translatedText) {
-        const container = cell.querySelector('.fixed-height-cell');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        const originalSpan = document.createElement('span');
-        originalSpan.className = 'original';
-        originalSpan.textContent = originalText;
-
-        const translationSpan = document.createElement('span');
-        translationSpan.className = 'translation';
-        translationSpan.textContent = translatedText;
-        translationSpan.style.fontWeight = 'bold';
-
-        container.appendChild(originalSpan);
-        container.appendChild(translationSpan);
-
-        cell.dataset.translated = 'true';
-        adjustFontSizeForCell(cell);
-        performanceStats.translationsCompleted++;
-
-        const row = cell.closest('tr');
-        if (row && BUTTON_ADAPTER_CONFIG.isEnabled) {
-            setTimeout(() => {
-                const buttons = row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
-                buttons.forEach(button => {
-                    if (isTargetButton(button)) {
-                        processedButtons.delete(button);
-                        button.removeAttribute('data-height-adapted');
-                        adaptButtonHeight(button);
-                    }
-                });
-            }, 100);
-        }
-    }
-
-    // ====== 修复的role_id列查找函数 ======
-    function findRoleIdColumns() {
-        const headers = document.querySelectorAll('.ant-table-thead th');
-        roleIdColumnIndexes = [];
-
-        headers.forEach((header, index) => {
-            const text = getCleanCellText(header);
-            if (text && (text.toLowerCase().includes('role_id') ||
-                         text.toLowerCase().includes('role_id2') ||
-                         text.toLowerCase().includes('role id') ||
-                         text.toLowerCase().includes('roleid'))) {
-                const columnIndex = Array.from(header.parentElement.children).indexOf(header) + 1;
-                // 跳过第8列，避免重复添加按钮
-                if (columnIndex !== COLUMN_INDEX && !roleIdColumnIndexes.includes(columnIndex)) {
-                    roleIdColumnIndexes.push(columnIndex);
-                    log('debug', `发现role_id相关列: "${text}" -> 列索引 ${columnIndex}`);
-                }
-            }
-        });
-
-        log('info', '发现role_id列:', roleIdColumnIndexes);
-    }
-
-    // ====== 修复的role_id列复制按钮功能 ======
-    function addCopyButtonsToRoleIdColumns() {
-        if (roleIdColumnIndexes.length === 0) return;
-
-        roleIdColumnIndexes.forEach(columnIndex => {
-            const roleCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${columnIndex})`);
-            roleCells.forEach(cell => {
-                // 清除现有的role复制按钮
-                clearRoleCopyButtons(cell);
-
-                if (getCleanCellText(cell)) {
-                    addRoleCopyButton(cell, columnIndex);
-                }
-            });
-        });
-    }
-
-    // 清除单元格内所有role复制按钮
-    function clearRoleCopyButtons(cell) {
-        const existingBtns = cell.querySelectorAll(`.${ROLE_COPY_BTN_CLASS}`);
-        existingBtns.forEach(btn => btn.remove());
-    }
-
-    function addRoleCopyButton(cell, columnIndex) {
-        // 检查是否已经存在相同类型的按钮
-        if (cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) return;
-
-        const copyBtn = document.createElement('div');
-        copyBtn.className = ROLE_COPY_BTN_CLASS;
-        copyBtn.title = '点击复制第8列原文和role_id';
-        copyBtn.textContent = '+';
-
-        // 添加唯一标识
-        copyBtn.setAttribute('data-button-type', 'role');
-
-        copyBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-
-            const row = cell.closest('tr');
-            const col8Cell = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
-            let col8Text = '';
-
-            if (col8Cell) {
-                const originalText = col8Cell.dataset.originalText;
-                if (originalText) {
-                    col8Text = originalText;
-                } else {
-                    const container = col8Cell.querySelector('.fixed-height-cell');
-                    if (container) {
-                        const originalSpan = container.querySelector('.original');
-                        col8Text = originalSpan ? originalSpan.textContent : getCleanCellText(col8Cell);
-                    } else {
-                        col8Text = getCleanCellText(col8Cell);
-                    }
-                }
-            }
-
-            let roleText = getCleanCellText(cell);
-            roleText = roleText.replace('+', '').trim();
-
-            if (!col8Text && !roleText) return;
-
-            const combinedText = col8Text + '\n' + roleText;
-
-            try {
-                await navigator.clipboard.writeText(combinedText);
-                copyBtn.textContent = '✓';
-                copyBtn.classList.add('copied');
-                setTimeout(() => {
-                    copyBtn.textContent = '+';
-                    copyBtn.classList.remove('copied');
-                }, 1000);
-            } catch (err) {
-                log('warn', '复制失败:', err);
-                copyBtn.textContent = '✗';
-                copyBtn.classList.add('error');
-                setTimeout(() => {
-                    copyBtn.textContent = '+';
-                    copyBtn.classList.remove('error');
-                }, 1000);
-            }
-        });
-
-        cell.style.position = 'relative';
-        cell.appendChild(copyBtn);
-    }
-
-    function getCleanCellText(cell) {
-        if (!cell) return '';
-
-        const clone = cell.cloneNode(true);
-        const buttons = clone.querySelectorAll('button, .copy-original-btn, .copy-role-combined-btn, .copy-role-id-only-btn');
-        buttons.forEach(btn => btn.remove());
-
-        return clone.textContent.trim();
-    }
-
-    // ====== 修复的单元格处理函数 ======
-    function wrapCellContent(cell) {
-        const columnIndex = Array.from(cell.parentElement.children).indexOf(cell) + 1;
-        if (columnIndex !== COLUMN_INDEX) {
-            return;
-        }
-
-        const text = getCleanCellText(cell);
-        if (!text) return;
-
-        delete cell.dataset.originalText;
-        delete cell.dataset.translated;
-        delete cell.dataset.processed;
+    function wrapCellContent(cell, text) {
+        // 清空并重建结构
         cell.innerHTML = '';
-
         cell.dataset.originalText = text;
 
         const container = document.createElement('div');
         container.className = 'fixed-height-cell';
-
+        
         const originalSpan = document.createElement('span');
         originalSpan.className = 'original';
         originalSpan.textContent = text;
 
         container.appendChild(originalSpan);
         cell.appendChild(container);
-
+        
+        // 添加复制按钮
         addCopyButtonToCell(cell);
-
-        setTimeout(() => {
-            setupClickForLongText(cell);
-        }, 50);
+        
+        // 绑定长文本点击事件
+        if (text.length > SINGLE_LINE_CHAR_LIMIT) {
+             container.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止冒泡触发 AntD 行点击
+                toggleFullDisplay(cell);
+            });
+        }
     }
 
-    // ====== 修复的第8列复制按钮处理 ======
-    function addCopyButtonToCell(cell) {
-        const columnIndex = Array.from(cell.parentElement.children).indexOf(cell) + 1;
-        if (columnIndex !== COLUMN_INDEX) {
-            return;
-        }
+    // ====== 字体调整 (性能优化版) ======
+    function adjustFontSizeForCell(cell) {
+        const container = cell.querySelector('.fixed-height-cell');
+        if (!container || container.classList.contains(EXPANDED_CLASS)) return;
 
-        const cellKey = getCellKey(cell);
+        // 获取文本内容
+        let displayText = '';
+        const originalSpan = container.querySelector('.original');
+        const translationSpan = container.querySelector('.translation');
+        
+        if (originalSpan) displayText += originalSpan.textContent;
+        if (translationSpan) displayText += ' ' + translationSpan.textContent;
+        if (!displayText) displayText = cell.dataset.originalText || '';
 
-        // 检查是否已经处理过这个单元格
-        if (processedCopyButtons.has(cellKey)) {
-            // 如果已经处理过，确保只有一个按钮
-            const existingBtns = cell.querySelectorAll(`.${COPY_BTN_CLASS}`);
-            if (existingBtns.length > 1) {
-                // 保留第一个，删除多余的
-                for (let i = 1; i < existingBtns.length; i++) {
-                    existingBtns[i].remove();
+        // 使用全局测量容器，避免创建新节点
+        if (!measureContainer) createMeasureContainer();
+        
+        measureContainer.textContent = displayText;
+        measureContainer.style.width = `${container.clientWidth}px`;
+        measureContainer.style.display = 'block'; // 临时显示以测量
+
+        // 二分查找优化或快速逼近
+        let optimalSize = MIN_FONT_SIZE;
+        
+        // 快速检查最大字体
+        measureContainer.style.fontSize = `${MAX_FONT_SIZE}px`;
+        if (measureContainer.scrollHeight <= MAX_CELL_HEIGHT) {
+            optimalSize = MAX_FONT_SIZE;
+        } else {
+            // 从最大往下尝试，步长稍大一点提高速度
+            for (let size = MAX_FONT_SIZE; size >= MIN_FONT_SIZE; size -= 2) {
+                measureContainer.style.fontSize = `${size}px`;
+                if (measureContainer.scrollHeight <= MAX_CELL_HEIGHT) {
+                    optimalSize = size;
+                    break;
                 }
             }
-            return;
         }
 
-        // 清除现有的复制按钮
-        const existingBtns = cell.querySelectorAll(`.${COPY_BTN_CLASS}`);
-        existingBtns.forEach(btn => btn.remove());
+        measureContainer.style.display = 'none'; // 隐藏
+        container.style.fontSize = `${optimalSize}px`;
+        
+        // 检查是否需要滚动条样式
+        if (container.scrollHeight > MAX_CELL_HEIGHT + 5) {
+            container.classList.add('long-text');
+        } else {
+            container.classList.remove('long-text');
+        }
+    }
+
+    // ====== 复制按钮相关 ======
+    function addCopyButtonToCell(cell) {
+        // 避免重复添加
+        if (cell.querySelector(`.${COPY_BTN_CLASS}`)) return;
 
         const copyBtn = document.createElement('div');
         copyBtn.className = COPY_BTN_CLASS;
-        copyBtn.title = '点击复制原文';
         copyBtn.textContent = '+';
-
-        // 添加唯一标识
-        copyBtn.setAttribute('data-button-type', 'original');
+        copyBtn.title = '复制原文';
 
         copyBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const originalText = cell.dataset.originalText || getCleanCellText(cell);
-            if (!originalText) return;
-            try {
-                await navigator.clipboard.writeText(originalText);
-                copyBtn.textContent = '✓';
-                copyBtn.classList.add('copied');
-                setTimeout(() => {
-                    copyBtn.textContent = '+';
-                    copyBtn.classList.remove('copied');
-                }, 1000);
-            } catch (err) {
-                log('warn', '复制失败:', err);
-                copyBtn.textContent = '✗';
-                copyBtn.classList.add('error');
-                setTimeout(() => {
-                    copyBtn.textContent = '+';
-                    copyBtn.classList.remove('error');
-                }, 1000);
-            }
+            e.preventDefault(); // 阻止默认行为
+            
+            const text = cell.dataset.originalText || getCleanCellText(cell);
+            copyTextToClipboard(text, copyBtn);
         });
 
         cell.style.position = 'relative';
         cell.appendChild(copyBtn);
-
-        processedCopyButtons.add(cellKey);
     }
 
-    // ====== 修复的字体调整函数 ======
-    async function adjustFontSizeForCell(cell) {
-        const columnIndex = Array.from(cell.parentElement.children).indexOf(cell) + 1;
-        if (columnIndex !== COLUMN_INDEX) {
-            return;
-        }
-
-        const container = cell.querySelector('.fixed-height-cell');
-        if (!container) return;
-
-        if (container.classList.contains(EXPANDED_CLASS)) {
-            container.style.fontSize = '16px';
-            return;
-        }
-
-        let displayText = '';
-        const originalSpan = container.querySelector('.original');
-        const translationSpan = container.querySelector('.translation');
-
-        if (originalSpan) displayText += originalSpan.textContent;
-        if (translationSpan) displayText += ' ' + translationSpan.textContent;
-        if (!displayText.trim()) displayText = cell.dataset.originalText || '';
-
-        const tempElement = document.createElement('div');
-        tempElement.style.cssText = `
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            line-height: 1.1;
-            padding: 4px 6px;
-            margin: 0;
-            box-sizing: border-box;
-            width: ${container.clientWidth}px;
-            visibility: hidden;
-        `;
-
-        if (originalSpan && translationSpan) {
-            const tempOriginal = document.createElement('span');
-            tempOriginal.style.fontWeight = 'normal';
-            tempOriginal.style.display = 'inline';
-            tempOriginal.textContent = originalSpan.textContent;
-
-            const tempTranslation = document.createElement('span');
-            tempTranslation.style.fontWeight = 'bold';
-            tempTranslation.style.display = 'inline';
-            tempTranslation.style.marginLeft = '8px';
-            tempTranslation.textContent = translationSpan.textContent;
-
-            tempElement.appendChild(tempOriginal);
-            tempElement.appendChild(tempTranslation);
-        } else {
-            tempElement.textContent = displayText;
-        }
-
-        document.body.appendChild(tempElement);
-
-        let fontSize = MAX_FONT_SIZE;
-        tempElement.style.fontSize = `${fontSize}px`;
-        let contentHeight = tempElement.scrollHeight;
-
-        const computedStyle = window.getComputedStyle(tempElement);
-        const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.1;
-        const approxLines = lineHeight > 0 ? Math.ceil(contentHeight / lineHeight) : 1;
-        const charCount = displayText.length;
-
-        if (charCount <= SINGLE_LINE_CHAR_LIMIT && approxLines === 1) {
-            container.classList.add('single-line');
-            let optimalSize = MAX_FONT_SIZE;
-            while (optimalSize > MIN_FONT_SIZE) {
-                tempElement.style.fontSize = `${optimalSize}px`;
-                const currentHeight = tempElement.scrollHeight;
-                const currentLines = lineHeight > 0 ? Math.ceil(currentHeight / lineHeight) : 1;
-                if (currentHeight <= SINGLE_LINE_HEIGHT && currentLines === 1) {
-                    let tryLarger = Math.min(MAX_FONT_SIZE, optimalSize + 4);
-                    while (tryLarger > optimalSize) {
-                        tempElement.style.fontSize = `${tryLarger}px`;
-                        const largerHeight = tempElement.scrollHeight;
-                        const largerLines = lineHeight > 0 ? Math.ceil(largerHeight / lineHeight) : 1;
-                        if (largerHeight <= SINGLE_LINE_HEIGHT && largerLines === 1) {
-                            optimalSize = tryLarger;
-                        }
-                        tryLarger--;
-                    }
-                    break;
-                }
-                optimalSize--;
-            }
-            fontSize = optimalSize;
-        } else {
-            container.classList.remove('single-line');
-            if (approxLines <= 2) {
-                let optimalSize = MAX_FONT_SIZE;
-                while (optimalSize > MIN_FONT_SIZE) {
-                    tempElement.style.fontSize = `${optimalSize}px`;
-                    if (tempElement.scrollHeight <= MAX_CELL_HEIGHT) {
-                        let tryLarger = Math.min(MAX_FONT_SIZE, optimalSize + 2);
-                        while (tryLarger > optimalSize) {
-                            tempElement.style.fontSize = `${tryLarger}px`;
-                            if (tempElement.scrollHeight <= MAX_CELL_HEIGHT) {
-                                optimalSize = tryLarger;
-                            }
-                            tryLarger--;
-                        }
-                        break;
-                    }
-                    optimalSize--;
-                }
-                fontSize = optimalSize;
-            } else {
-                while (fontSize > MIN_FONT_SIZE) {
-                    fontSize--;
-                    tempElement.style.fontSize = `${fontSize}px`;
-                    contentHeight = tempElement.scrollHeight;
-                    if (contentHeight <= MAX_CELL_HEIGHT) break;
-                }
-                if (fontSize < MIN_FONT_SIZE) {
-                    fontSize = MIN_FONT_SIZE;
-                    tempElement.style.fontSize = `${fontSize}px`;
-                    if (tempElement.scrollHeight > MAX_CELL_HEIGHT) {
-                        log('warn', '警告: 即使使用最小字体，文本仍然超出最大高度');
-                    }
-                }
-            }
-        }
-
-        container.style.fontSize = `${fontSize}px`;
-        document.body.removeChild(tempElement);
-
-        updateScrollbarVisibility(container, charCount, approxLines);
+    // 辅助：获取纯净文本（排除按钮）
+    function getCleanCellText(cell) {
+        if (!cell) return '';
+        // 使用 TreeWalker 或简单的克隆节点过滤
+        const clone = cell.cloneNode(true);
+        const ignores = clone.querySelectorAll(`.${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS}, button`);
+        ignores.forEach(el => el.remove());
+        return clone.textContent.trim();
     }
 
-    function updateScrollbarVisibility(container, charCount, approxLines) {
-        setTimeout(() => {
-            if (container.classList.contains(EXPANDED_CLASS)) {
-                container.classList.add('no-scroll');
-                return;
-            }
-
-            if (charCount <= SINGLE_LINE_CHAR_LIMIT && approxLines === 1) {
-                container.classList.add('no-scroll');
-            } else {
-                const hasScroll = container.scrollHeight > MAX_CELL_HEIGHT + 5;
-                container.classList.toggle('no-scroll', !hasScroll);
-
-                const cell = container.closest('td');
-                if (cell) {
-                    setupClickForLongText(cell);
-                }
-            }
-        }, 30);
+    async function copyTextToClipboard(text, btnElement) {
+        try {
+            await navigator.clipboard.writeText(text);
+            const originalText = btnElement.textContent;
+            btnElement.textContent = '✓';
+            btnElement.classList.add('copied');
+            setTimeout(() => {
+                btnElement.textContent = originalText;
+                btnElement.classList.remove('copied');
+            }, 1000);
+        } catch (err) {
+            btnElement.textContent = '✗';
+            setTimeout(() => {
+                btnElement.textContent = '+';
+            }, 1000);
+        }
     }
 
-    // ====== 修复的翻译函数 ======
+    // ====== 翻译逻辑 ======
     async function translateIfNeeded(cell) {
-        const columnIndex = Array.from(cell.parentElement.children).indexOf(cell) + 1;
-        if (columnIndex !== COLUMN_INDEX) {
-            return;
-        }
+        const originalText = cell.dataset.originalText;
+        if (!originalText || originalText.length < 2) return;
 
-        const originalText = cell.dataset.originalText || '';
-        if (!originalText || originalText.length < 3) return;
-        if (cell.dataset.translated === 'true') return;
-
+        // 检查缓存
         if (translationCache.has(originalText)) {
-            applyTranslation(cell, originalText, translationCache.get(originalText));
+            applyTranslation(cell, translationCache.get(originalText));
             return;
         }
 
         try {
-            const translatedText = await translateText(originalText);
-            if (translatedText && translatedText !== originalText) {
-                translationCache.set(originalText, translatedText);
-                applyTranslation(cell, originalText, translatedText);
+            const translated = await translateText(originalText);
+            if (translated && translated !== originalText) {
+                translationCache.set(originalText, translated);
+                applyTranslation(cell, translated);
             }
         } catch (e) {
-            log('warn', '翻译失败:', e);
+            // console.warn('Translation failed', e);
         }
     }
 
-    function setupClickForLongText(cell) {
+    function applyTranslation(cell, translatedText) {
         const container = cell.querySelector('.fixed-height-cell');
         if (!container) return;
 
-        const needsScroll = container.scrollHeight > MAX_CELL_HEIGHT + 5;
+        // 检查是否已经有翻译span，防止重复添加
+        if (container.querySelector('.translation')) return;
 
-        if (needsScroll) {
-            container.classList.add('long-text');
+        const translationSpan = document.createElement('span');
+        translationSpan.className = 'translation';
+        translationSpan.textContent = translatedText;
+        translationSpan.style.fontWeight = 'bold';
+        translationSpan.style.marginLeft = '8px';
 
-            container.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleFullDisplay(cell);
-            });
-        } else {
-            container.classList.remove('long-text');
-            container.replaceWith(container.cloneNode(true));
+        container.appendChild(translationSpan);
+        cell.dataset.translated = 'true';
+        
+        // 翻译后重新调整字体
+        adjustFontSizeForCell(cell);
+        
+        // 如果启用了按钮适配，翻译后需要重新检查高度
+        if (BUTTON_ADAPTER_CONFIG.isEnabled) {
+            const row = cell.closest('tr');
+            if (row) setTimeout(() => adaptButtonsInRow(row), 100);
         }
     }
 
-    function toggleFullDisplay(cell) {
-        const container = cell.querySelector('.fixed-height-cell');
-        if (!container) return;
-
-        const isExpanded = container.classList.contains(EXPANDED_CLASS);
-
-        if (isExpanded) {
-            container.classList.remove(EXPANDED_CLASS);
-            adjustFontSizeForCell(cell);
-        } else {
-            container.classList.add(EXPANDED_CLASS);
-            container.style.fontSize = '16px';
-        }
-    }
-
-    async function translateText(text) {
+    function translateText(text) {
         return new Promise((resolve) => {
-            const url = 'https://translate.googleapis.com/translate_a/single';
-            const params = new URLSearchParams({
-                client: 'gtx',
-                sl: 'auto',
-                tl: 'zh-CN',
-                dt: 't',
-                q: text
-            });
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
             GM_xmlhttpRequest({
                 method: 'GET',
-                url: `${url}?${params}`,
+                url: url,
                 timeout: 8000,
-                onload: res => {
+                onload: (res) => {
                     if (res.status === 200) {
                         try {
                             const data = JSON.parse(res.responseText);
                             let result = '';
-                            if (Array.isArray(data) && Array.isArray(data[0])) {
-                                for (const item of data[0]) {
-                                    if (item?.[0]) result += item[0];
-                                }
+                            if (data[0]) {
+                                data[0].forEach(item => { if (item[0]) result += item[0]; });
                             }
                             resolve(result || text);
-                        } catch (e) {
-                            resolve(text);
-                        }
-                    } else {
-                        resolve(text);
-                    }
+                        } catch (e) { resolve(text); }
+                    } else { resolve(text); }
                 },
                 onerror: () => resolve(text),
                 ontimeout: () => resolve(text)
@@ -1986,149 +474,291 @@
         });
     }
 
-    function setupTableSortDetection() {
-        tableMutationObserver = new MutationObserver((mutations) => {
-            let shouldProcess = false;
-
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList') {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1) {
-                            if (node.matches && (
-                                node.matches('.ant-table-tbody') ||
-                                node.matches('.ant-table-tbody tr') ||
-                                node.matches('.ant-table') ||
-                                node.querySelector('.ant-table-tbody')
-                            )) {
-                                shouldProcess = true;
-                                break;
-                            }
-                        }
-                    }
+    // ====== Role ID 相关功能 ======
+    function findRoleIdColumns() {
+        const headers = document.querySelectorAll('.ant-table-thead th');
+        roleIdColumnIndexes = [];
+        headers.forEach((th, idx) => {
+            const text = th.textContent.toLowerCase();
+            if (text.includes('role_id') || text.includes('roleid')) {
+                const colIdx = idx + 1;
+                if (colIdx !== COLUMN_INDEX && !roleIdColumnIndexes.includes(colIdx)) {
+                    roleIdColumnIndexes.push(colIdx);
                 }
             }
+        });
+    }
 
-            if (shouldProcess) {
-                log('debug', '检测到表格更新，重新处理...');
-                scheduleProcessNewCells();
-                setTimeout(() => {
-                    findRoleIdColumns();
-                    addCopyButtonsToRoleIdColumns();
-                    addRoleIdOnlyCopyButtons(); // 添加role_id列仅复制按钮
-                }, 500);
+    function addCopyButtonsToRoleIdColumns() {
+        roleIdColumnIndexes.forEach(colIdx => {
+            const cells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${colIdx})`);
+            cells.forEach(cell => {
+                if (cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) return;
+                const text = getCleanCellText(cell);
+                if (!text) return;
+
+                const btn = document.createElement('div');
+                btn.className = ROLE_COPY_BTN_CLASS;
+                btn.textContent = '+';
+                btn.title = '复制原内容+RoleID';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const row = cell.closest('tr');
+                    const mainCell = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
+                    const mainText = mainCell ? (mainCell.dataset.originalText || getCleanCellText(mainCell)) : '';
+                    const roleText = getCleanCellText(cell);
+                    copyTextToClipboard(`${mainText}\n${roleText}`, btn);
+                };
+                cell.style.position = 'relative';
+                cell.appendChild(btn);
+            });
+        });
+    }
+
+    function addRoleIdOnlyCopyButtons() {
+        roleIdColumnIndexes.forEach(colIdx => {
+            const cells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${colIdx})`);
+            cells.forEach(cell => {
+                if (cell.querySelector(`.${ROLE_ID_ONLY_COPY_BTN_CLASS}`)) return;
+                const text = getCleanCellText(cell);
+                if (!text) return;
+
+                const btn = document.createElement('div');
+                btn.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
+                btn.textContent = '-';
+                btn.title = '仅复制RoleID';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const roleText = getCleanCellText(cell);
+                    copyTextToClipboard(roleText, btn);
+                };
+                cell.style.position = 'relative';
+                cell.appendChild(btn);
+            });
+        });
+    }
+
+    // ====== 按钮高度适配 (优化版) ======
+    function processAllTargetButtons() {
+        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
+        const buttons = document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
+        buttons.forEach(btn => {
+            if (!btn.dataset.adapted && BUTTON_ADAPTER_CONFIG.targetButtonTexts.some(t => btn.textContent.includes(t))) {
+                adaptButtonHeight(btn);
             }
         });
+    }
 
-        tableMutationObserver.observe(document.body, {
-            childList: true,
-            subtree: true
+    function adaptButtonsInRow(row) {
+        const buttons = row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
+        buttons.forEach(btn => {
+            if (BUTTON_ADAPTER_CONFIG.targetButtonTexts.some(t => btn.textContent.includes(t))) {
+                adaptButtonHeight(btn);
+            }
         });
+    }
+
+    function adaptButtonHeight(btn) {
+        const row = btn.closest('tr');
+        if (!row) return;
+        
+        // 获取同行第8列的高度作为参考
+        const mainCell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .fixed-height-cell`);
+        if (mainCell) {
+            let targetHeight = mainCell.scrollHeight + BUTTON_ADAPTER_CONFIG.buttonHeightOffset;
+            // 限制范围
+            targetHeight = Math.max(BUTTON_ADAPTER_CONFIG.minButtonHeight, Math.min(BUTTON_ADAPTER_CONFIG.maxButtonHeight, targetHeight));
+            
+            btn.style.height = `${targetHeight}px`;
+            btn.style.lineHeight = `${targetHeight}px`;
+            btn.dataset.adapted = 'true';
+        }
+    }
+
+    // ====== UI: 展开/收起 ======
+    function toggleFullDisplay(cell) {
+        const container = cell.querySelector('.fixed-height-cell');
+        if (!container) return;
+        
+        container.classList.toggle(EXPANDED_CLASS);
+        if (container.classList.contains(EXPANDED_CLASS)) {
+            container.style.fontSize = '16px';
+        } else {
+            adjustFontSizeForCell(cell); // 恢复时重新计算字体
+        }
+    }
+
+    // ====== 样式注入 ======
+    function addGlobalStyle() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) {
+                position: relative !important;
+                padding: 0 !important;
+                height: auto !important;
+            }
+            .fixed-height-cell {
+                width: 100%;
+                max-height: ${MAX_CELL_HEIGHT}px;
+                overflow-y: auto;
+                padding: 6px;
+                box-sizing: border-box;
+                white-space: pre-wrap;
+                word-break: break-word;
+                transition: all 0.2s;
+            }
+            .fixed-height-cell.long-text {
+                cursor: pointer;
+            }
+            .fixed-height-cell.long-text:hover {
+                background-color: rgba(24, 144, 255, 0.05);
+            }
+            .fixed-height-cell.${EXPANDED_CLASS} {
+                max-height: none !important;
+                z-index: 100;
+                background: #fff;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border-radius: 4px;
+                padding: 12px;
+            }
+            .${COPY_BTN_CLASS} {
+                position: absolute; top: 2px; right: 2px; width: 24px; height: 24px;
+                line-height: 24px; text-align: center; background: rgba(255,255,255,0.8);
+                border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; color: #666;
+                z-index: 10; display: none;
+            }
+            td:hover .${COPY_BTN_CLASS} { display: block; }
+            .${COPY_BTN_CLASS}:hover { color: #1890ff; border-color: #1890ff; }
+            
+            .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} {
+                position: absolute; top: 4px; width: 20px; height: 20px;
+                line-height: 18px; text-align: center; background: rgba(255,255,255,0.6);
+                border: 1px solid #ccc; border-radius: 3px; cursor: pointer;
+                font-size: 12px; color: #555; z-index: 5;
+            }
+            .${ROLE_COPY_BTN_CLASS} { right: 4px; }
+            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { left: 4px; }
+            .${ROLE_COPY_BTN_CLASS}:hover, .${ROLE_ID_ONLY_COPY_BTN_CLASS}:hover {
+                background: #1890ff; color: #fff; border-color: #1890ff;
+            }
+            
+            /* 滚动条样式 */
+            .fixed-height-cell::-webkit-scrollbar { width: 4px; }
+            .fixed-height-cell::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+            
+            /* 控制面板样式 */
+            #trans-control-panel {
+                position: fixed; top: 60px; right: 20px; z-index: 9999;
+                background: white; border: 1px solid #ddd; border-radius: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 12px;
+                transition: width 0.3s, height 0.3s; overflow: hidden;
+            }
+            .panel-header { padding: 8px; background: #f0f2f5; cursor: move; display: flex; justify-content: space-between; align-items: center;}
+            .panel-content { padding: 12px; }
+            .panel-row { margin-bottom: 8px; display: flex; align-items: center; }
+            .panel-row input[type="checkbox"] { margin-right: 6px; }
+            .panel-row input[type="number"] { width: 50px; margin-left: auto; }
+            .minimized-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #1890ff; font-weight: bold;}
+        `;
+        document.head.appendChild(style);
     }
 
     function bindShortcut() {
-        log('info', '绑定快捷键监听器');
-
-        function handleKeyDown(e) {
-            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true')) {
-                return;
+        document.addEventListener('keydown', (e) => {
+            // Alt+Z 切换翻译
+            if (e.altKey && (e.key === 'z' || e.key === 'Z')) {
+                isTranslationEnabled = !isTranslationEnabled;
+                saveSettings();
+                const check = document.getElementById('cb-translate');
+                if(check) check.checked = isTranslationEnabled;
+                
+                GM_notification({text: `翻译已${isTranslationEnabled ? '开启' : '关闭'}`, timeout: 1500});
+                
+                // 重新处理所有单元格
+                document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`).forEach(cell => {
+                    cell.dataset.translated = isTranslationEnabled ? 'false' : 'disabled';
+                    // 重新触发处理
+                    if (isTranslationEnabled) translateIfNeeded(cell);
+                    else {
+                        const transSpan = cell.querySelector('.translation');
+                        if (transSpan) transSpan.remove();
+                        adjustFontSizeForCell(cell);
+                    }
+                });
             }
-
-            if (e.altKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                e.stopPropagation();
-                log('debug', 'Alt+Z 触发 - 切换翻译功能');
-                toggleTranslation();
-                return;
-            }
-
-            if (e.key === '=' || e.code === 'Equal') {
-                e.preventDefault();
-                e.stopPropagation();
-                log('debug', '= 键触发 - 切换按钮高度适配');
-                toggleButtonHeightAdapter();
-                return;
-            }
-
-            if (e.key === '-' || e.code === 'Minus') {
-                e.preventDefault();
-                e.stopPropagation();
-                log('debug', '- 键触发 - 开关控制面板');
-                toggleControlPanel();
-                return;
-            }
-        }
-
-        document.addEventListener('keydown', handleKeyDown, true);
-        window.addEventListener('keydown', handleKeyDown, true);
+        });
     }
 
-    function toggleTranslation() {
-        isTranslationEnabled = !isTranslationEnabled;
-        saveSettings();
-
-        if (typeof GM_notification !== 'undefined') {
-            GM_notification({
-                text: `翻译已${isTranslationEnabled ? '开启' : '关闭'}`,
-                timeout: 2000
-            });
-        } else {
-            showNotification(`翻译已${isTranslationEnabled ? '开启' : '关闭'}`, 'info');
-        }
-
-        if (controlPanel) {
-            const translationToggle = controlPanel.querySelector('#translation-toggle');
-            if (translationToggle) {
-                translationToggle.checked = isTranslationEnabled;
+    function createControlPanel() {
+        controlPanel = document.createElement('div');
+        controlPanel.id = 'trans-control-panel';
+        
+        const updateView = () => {
+            if (controlPanelMinimized) {
+                controlPanel.innerHTML = `<div class="minimized-btn" title="展开设置">+</div>`;
+                controlPanel.style.width = '32px';
+                controlPanel.style.height = '32px';
+                controlPanel.querySelector('.minimized-btn').onclick = () => {
+                    controlPanelMinimized = false;
+                    saveSettings();
+                    updateView();
+                };
+            } else {
+                controlPanel.style.width = '220px';
+                controlPanel.style.height = 'auto';
+                controlPanel.innerHTML = `
+                    <div class="panel-header">
+                        <span>🔧 翻译助手设置</span>
+                        <span style="cursor:pointer" id="btn-minimize">_</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="panel-row">
+                            <label><input type="checkbox" id="cb-translate" ${isTranslationEnabled?'checked':''}> 启用翻译</label>
+                        </div>
+                        <div class="panel-row">
+                            <label><input type="checkbox" id="cb-btn-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮高度适配</label>
+                        </div>
+                        <div class="panel-row">
+                            <span>最小字体:</span>
+                            <input type="number" id="inp-min-font" value="${MIN_FONT_SIZE}" min="10" max="20">
+                        </div>
+                        <div class="panel-row">
+                            <span>最大字体:</span>
+                            <input type="number" id="inp-max-font" value="${MAX_FONT_SIZE}" min="14" max="40">
+                        </div>
+                        <div style="margin-top:8px; text-align:right; color:#999; font-size:10px;">v8.1.0 性能优化版</div>
+                    </div>
+                `;
+                
+                // 绑定事件
+                controlPanel.querySelector('#btn-minimize').onclick = () => {
+                    controlPanelMinimized = true;
+                    saveSettings();
+                    updateView();
+                };
+                controlPanel.querySelector('#cb-translate').onchange = (e) => {
+                    isTranslationEnabled = e.target.checked;
+                    saveSettings();
+                    processAllCellsInBatches(); // 重新应用
+                };
+                controlPanel.querySelector('#cb-btn-adapt').onchange = (e) => {
+                    BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked;
+                    saveSettings();
+                };
+                controlPanel.querySelector('#inp-min-font').onchange = (e) => {
+                    MIN_FONT_SIZE = Number(e.target.value);
+                    saveSettings();
+                };
+                controlPanel.querySelector('#inp-max-font').onchange = (e) => {
+                    MAX_FONT_SIZE = Number(e.target.value);
+                    saveSettings();
+                };
             }
-        }
-
-        if (isTranslationEnabled) {
-            reprocessTranslationsOnly();
-        } else {
-            removeTranslationsOnly();
-        }
+        };
+        
+        updateView();
+        document.body.appendChild(controlPanel);
     }
 
-    function toggleButtonHeightAdapter() {
-        BUTTON_ADAPTER_CONFIG.isEnabled = !BUTTON_ADAPTER_CONFIG.isEnabled;
-        saveSettings();
-
-        if (typeof GM_notification !== 'undefined') {
-            GM_notification({
-                text: `按钮高度适配已${BUTTON_ADAPTER_CONFIG.isEnabled ? '开启' : '关闭'}`,
-                timeout: 2000
-            });
-        } else {
-            showNotification(`按钮高度适配已${BUTTON_ADAPTER_CONFIG.isEnabled ? '开启' : '关闭'}`, 'info');
-        }
-
-        if (controlPanel) {
-            const buttonHeightToggle = controlPanel.querySelector('#button-height-adapter-toggle');
-            if (buttonHeightToggle) {
-                buttonHeightToggle.checked = BUTTON_ADAPTER_CONFIG.isEnabled;
-            }
-        }
-
-        if (BUTTON_ADAPTER_CONFIG.isEnabled) {
-            processedButtons.clear();
-            pendingButtonAdaptations.clear();
-            initialButtonScan();
-        } else {
-            processedButtons.clear();
-            pendingButtonAdaptations.clear();
-            document.querySelectorAll('button[data-height-adapted="true"]').forEach(btn => {
-                btn.removeAttribute('data-height-adapted');
-                btn.style.height = '';
-                btn.style.minHeight = '';
-                btn.style.lineHeight = '';
-                btn.style.maxHeight = '';
-            });
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    init();
 })();
