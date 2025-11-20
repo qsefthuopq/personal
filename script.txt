@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         工作台文本翻译|复制按钮|自动缩放|强力修复版
+// @name         工作台文本翻译|复制按钮|自动缩放|排版修复版
 // @namespace    http://tampermonkey.net/
-// @version      8.4.0
-// @description  修复v8.4：解决内容被重置导致功能失效的问题｜自动翻译｜第8列复制｜快捷键(-/=)
+// @version      8.5.0
+// @description  修复v8.5：解决文字重叠、未顶部对齐的问题｜保留所有功能｜快捷键(-/=)
 // @author       You
 // @match        https://breeze.opd.easebar.com/*
 // @grant        GM_xmlhttpRequest
@@ -23,7 +23,7 @@
     let MIN_FONT_SIZE = 16;
     let MAX_FONT_SIZE = 32;
     let SINGLE_LINE_CHAR_LIMIT = 60;
-    
+
     // 类名常量
     const WRAPPER_CLASS = 'fixed-height-cell';
     const COPY_BTN_CLASS = 'copy-original-btn';
@@ -38,7 +38,7 @@
     let processDebounceTimer = null;
     let roleIdColumnIndexes = [];
     let globalMeasureContainer = null;
-    
+
     // 按钮适配配置
     const BUTTON_ADAPTER_CONFIG = {
         isEnabled: false,
@@ -56,64 +56,54 @@
 
     // ====== 初始化 ======
     function init() {
-        console.log('v8.4.0 强力修复版已加载');
+        console.log('v8.5.0 排版修复版已加载');
         loadSettings();
-        addGlobalStyle();
+        addGlobalStyle(); // 核心修复在这里
         createMeasureContainer();
         createControlPanel();
         bindShortcut();
-        
-        // 启动监控
+
         startStableMonitoring();
-        
-        // 按钮高度适配定时器
+
+        // 定时器与重试
         setInterval(() => {
             if (BUTTON_ADAPTER_CONFIG.isEnabled) processAllTargetButtons();
         }, 800);
 
-        // 暴力重试初始化，确保表格加载后能处理
         const retryInit = () => {
             processAllCellsInBatches();
             addRoleButtons();
         };
         setTimeout(retryInit, 1000);
         setTimeout(retryInit, 3000);
-        setTimeout(retryInit, 5000);
         
-        // 智能滚动
         initSmartScrollHandling();
     }
 
-    // ====== 核心处理逻辑 (修复功能丢失的关键) ======
+    // ====== 核心逻辑：处理单元格 ======
     function processAllCellsInBatches() {
         if (processing) return;
         processing = true;
 
-        // 1. 获取所有第8列单元格
         const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
         
-        // 2. 筛选出“未正确包装”的单元格
-        // 修复点：不再依赖 dataset，而是检查内部是否存在 wrapper。
-        // 如果 React/AntD 重置了单元格内容， wrapper 会消失，这里就能检测到并重新处理。
+        // 筛选未包装的单元格
         const cellsToProcess = Array.from(allCells).filter(cell => {
-            // 排除正在编辑或空单元格
             if (cell.querySelector('input') || cell.querySelector('textarea')) return false;
-            // 检查是否已经有了包装容器
+            // 只要没有wrapper类，就视为未处理
             const hasWrapper = cell.querySelector(`.${WRAPPER_CLASS}`);
             return !hasWrapper && cell.textContent.trim().length > 0;
-        }).slice(0, 50); // 每次处理50个，防止卡顿
+        }).slice(0, 50);
 
         if (cellsToProcess.length === 0) {
             processing = false;
             return;
         }
 
-        // 3. 处理这一批
         cellsToProcess.forEach(cell => {
             wrapCellContent(cell);
         });
 
-        // 4. 异步执行翻译和字体调整 (避免阻塞主线程)
         setTimeout(() => {
             cellsToProcess.forEach(cell => {
                 adjustFontSizeForCell(cell);
@@ -124,22 +114,18 @@
 
         processing = false;
         
-        // 如果还有未处理的，继续调度
         if (allCells.length > cellsToProcess.length) {
             setTimeout(processAllCellsInBatches, 100);
         }
     }
 
     function wrapCellContent(cell) {
-        // 获取纯文本，移除可能残留的按钮
         const text = getCleanText(cell);
         if (!text) return;
 
-        // 清空单元格，重建结构
         cell.innerHTML = '';
-        cell.dataset.originalText = text; // 备份原文
+        cell.dataset.originalText = text;
 
-        // 创建固定高度容器
         const container = document.createElement('div');
         container.className = WRAPPER_CLASS;
         
@@ -150,10 +136,8 @@
         container.appendChild(originalSpan);
         cell.appendChild(container);
 
-        // 添加第8列复制按钮
         addCopyBtn(cell);
 
-        // 绑定长文本点击事件
         if (text.length > SINGLE_LINE_CHAR_LIMIT) {
             container.classList.add('long-text');
             container.onclick = (e) => {
@@ -170,60 +154,140 @@
 
     function getCleanText(cell) {
         const clone = cell.cloneNode(true);
-        // 移除所有按钮再获取文本
         clone.querySelectorAll('div[class*="btn"], button').forEach(el => el.remove());
         return clone.textContent.trim();
     }
 
-    // ====== 监控系统 (性能优化：忽略 Popover) ======
-    function startStableMonitoring() {
-        const observer = new MutationObserver((mutations) => {
-            let shouldProcess = false;
-            for (const mutation of mutations) {
-                const target = mutation.target;
+    // ====== 样式修复 (关键修复点) ======
+    function addGlobalStyle() {
+        const css = `
+            /* 1. 强制单元格顶部对齐，防止内容居中 */
+            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) { 
+                position: relative !important; 
+                padding: 0 !important; 
+                height: auto !important; 
+                vertical-align: top !important; /* 关键：从顶部开始 */
+            }
+            
+            /* 2. 内容容器样式修复 */
+            .${WRAPPER_CLASS} { 
+                position: relative; 
+                width: 100%; 
+                max-height: ${MAX_CELL_HEIGHT}px; 
+                overflow-y: auto; 
+                padding: 6px 8px; /* 增加一点内边距 */
+                box-sizing: border-box; 
+                white-space: pre-wrap; 
+                word-wrap: break-word; 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 
-                // 核心优化：如果变动发生在 Popover/Tooltip 内部，直接忽略
-                if (target.nodeType === 1) {
-                    if (target.closest('.ant-popover') || 
-                        target.closest('.ant-tooltip') || 
-                        target.closest('.ant-dropdown') ||
-                        target.classList.contains('ant-popover') ||
-                        target.classList.contains('ant-tooltip')) {
-                        continue;
-                    }
-                }
-
-                // 检测表格行变化
-                if (mutation.type === 'childList') {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1) {
-                            if (node.tagName === 'TR' || node.querySelector('.ant-table-tbody') || node.tagName === 'TD') {
-                                shouldProcess = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (shouldProcess) break;
+                /* 3. 关键：解决文字重叠 */
+                line-height: 1.4 !important;  /* 相对行高，随字体变大而变大 */
+                display: block !important;    /* 防止被 Flex 影响 */
+                text-align: left !important;  /* 强制左对齐 */
             }
 
-            if (shouldProcess) {
-                if (processDebounceTimer) clearTimeout(processDebounceTimer);
-                processDebounceTimer = setTimeout(() => {
-                    processAllCellsInBatches();
-                    addRoleButtons();
-                }, 500); // 500ms 防抖
+            /* 单行模式 */
+            .${WRAPPER_CLASS}.single-line { 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                white-space: nowrap; 
+                height: ${SINGLE_LINE_HEIGHT}px; 
+                line-height: ${SINGLE_LINE_HEIGHT}px !important; /* 单行时强制垂直居中 */
+                padding-top: 0;
+                padding-bottom: 0;
             }
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: false // 不监听属性，提升性能
-        });
+            
+            .${WRAPPER_CLASS}.no-scroll { overflow: hidden; }
+            .${WRAPPER_CLASS} .translation { display: block; font-weight: bold; margin-top: 4px; color: #333; }
+            .${WRAPPER_CLASS}.long-text { cursor: pointer; background: rgba(24,144,255,0.05); }
+            .${WRAPPER_CLASS}.${EXPANDED_CLASS} { 
+                max-height: none !important; 
+                overflow: visible !important; 
+                background: white; 
+                border: 1px solid #1890ff; 
+                padding: 12px; 
+                z-index: 999; 
+                border-radius: 4px; 
+                box-shadow: 0 4px 16px rgba(0,0,0,0.2); 
+            }
+            
+            /* 按钮样式优化 */
+            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
+                position: absolute; 
+                background: rgba(255,255,255,0.9); 
+                border: 1px solid #d9d9d9; 
+                border-radius: 4px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                cursor: pointer; 
+                z-index: 20; 
+                color: #666; 
+                transition: all 0.2s; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 28px; height: 28px; font-size: 14px; }
+            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
+            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
+            
+            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
+                border-color: #1890ff; color: #1890ff; transform: scale(1.05);
+            }
+            .copied { color: #52c41a !important; border-color: #52c41a !important; background: #f6ffed !important; }
+            .error { color: #ff4d4f !important; border-color: #ff4d4f !important; background: #fff1f0 !important; }
+        `;
+        const style = document.createElement('style');
+        style.textContent = css;
+        document.head.appendChild(style);
     }
 
-    // ====== 翻译功能 ======
+    // ====== 字体缩放 (适配新的行高逻辑) ======
+    function createMeasureContainer() {
+        if (globalMeasureContainer) return;
+        globalMeasureContainer = document.createElement('div');
+        // 这里的样式要和 WRAPPER_CLASS 保持一致，才能测得准
+        globalMeasureContainer.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;padding:6px 8px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+        document.body.appendChild(globalMeasureContainer);
+    }
+
+    function adjustFontSizeForCell(cell) {
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (!container || container.classList.contains(EXPANDED_CLASS)) return;
+
+        let text = '';
+        const orig = container.querySelector('.original');
+        const trans = container.querySelector('.translation');
+        if (orig) text += orig.textContent;
+        if (trans) text += '\n' + trans.textContent; // 使用换行符模拟 block 显示
+        if (!text) text = cell.dataset.originalText || '';
+
+        if (!globalMeasureContainer) createMeasureContainer();
+        globalMeasureContainer.style.width = container.clientWidth + 'px';
+        globalMeasureContainer.textContent = text;
+
+        let size = MAX_FONT_SIZE;
+        const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT && !text.includes('\n') && !trans; // 有翻译就不算单行
+        
+        container.classList.toggle('single-line', isSingleLine);
+        
+        if (isSingleLine) {
+             // 单行模式简单处理
+             container.style.fontSize = MAX_FONT_SIZE + 'px';
+        } else {
+            // 多行模式：自适应
+            globalMeasureContainer.style.fontSize = size + 'px';
+            while (size > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > MAX_CELL_HEIGHT) {
+                size -= 1;
+                globalMeasureContainer.style.fontSize = size + 'px';
+            }
+            container.style.fontSize = size + 'px';
+        }
+        
+        container.classList.toggle('no-scroll', container.scrollHeight <= MAX_CELL_HEIGHT + 5);
+    }
+
+    // ====== 翻译 ======
     async function translateIfNeeded(cell) {
         if (cell.dataset.translated === 'true') return;
         const text = cell.dataset.originalText;
@@ -247,7 +311,7 @@
         const container = cell.querySelector(`.${WRAPPER_CLASS}`);
         if (!container || container.querySelector('.translation')) return;
 
-        const transSpan = document.createElement('span');
+        const transSpan = document.createElement('div'); // 改用 div 让翻译换行显示
         transSpan.className = 'translation';
         transSpan.textContent = transText;
         container.appendChild(transSpan);
@@ -272,52 +336,9 @@
         });
     }
 
-    // ====== 字体缩放 (复用容器优化) ======
-    function createMeasureContainer() {
-        if (globalMeasureContainer) return;
-        globalMeasureContainer = document.createElement('div');
-        globalMeasureContainer.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;line-height:1.1;padding:4px 6px;box-sizing:border-box;';
-        document.body.appendChild(globalMeasureContainer);
-    }
-
-    function adjustFontSizeForCell(cell) {
-        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
-        if (!container || container.classList.contains(EXPANDED_CLASS)) return;
-
-        let text = '';
-        const orig = container.querySelector('.original');
-        const trans = container.querySelector('.translation');
-        if (orig) text += orig.textContent;
-        if (trans) text += ' ' + trans.textContent;
-        if (!text) text = cell.dataset.originalText || '';
-
-        if (!globalMeasureContainer) createMeasureContainer();
-        globalMeasureContainer.style.width = container.clientWidth + 'px';
-        globalMeasureContainer.textContent = text;
-
-        let size = MAX_FONT_SIZE;
-        const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT;
-        
-        container.classList.toggle('single-line', isSingleLine);
-        
-        // 简单的向下逼近算法
-        globalMeasureContainer.style.fontSize = size + 'px';
-        const limitHeight = isSingleLine ? SINGLE_LINE_HEIGHT * 1.2 : MAX_CELL_HEIGHT;
-        
-        while (size > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > limitHeight) {
-            size -= isSingleLine ? 2 : 1;
-            globalMeasureContainer.style.fontSize = size + 'px';
-        }
-        
-        container.style.fontSize = size + 'px';
-        container.classList.toggle('no-scroll', container.scrollHeight <= MAX_CELL_HEIGHT + 5);
-    }
-
-    // ====== 复制按钮 & RoleID ======
+    // ====== 复制功能 ======
     function addCopyBtn(cell) {
-        // 只有当没有按钮时才添加
         if (cell.querySelector(`.${COPY_BTN_CLASS}`)) return;
-        
         const btn = document.createElement('div');
         btn.className = COPY_BTN_CLASS;
         btn.textContent = '+';
@@ -345,7 +366,6 @@
                     const txt = getCleanText(cell);
                     if (!txt) return;
 
-                    // 组合复制 (+)
                     const btn1 = document.createElement('div');
                     btn1.className = ROLE_COPY_BTN_CLASS;
                     btn1.textContent = '+';
@@ -359,7 +379,6 @@
                     cell.style.position = 'relative';
                     cell.appendChild(btn1);
 
-                    // 仅ID复制 (-)
                     const btn2 = document.createElement('div');
                     btn2.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
                     btn2.textContent = '-';
@@ -384,7 +403,37 @@
         }
     }
 
-    // ====== 按钮高度适配 ======
+    // ====== 监控 ======
+    function startStableMonitoring() {
+        const observer = new MutationObserver((mutations) => {
+            let shouldProcess = false;
+            for (const mutation of mutations) {
+                const target = mutation.target;
+                // 忽略 Popover 浮层，解决卡顿
+                if (target.nodeType === 1) {
+                    if (target.closest('.ant-popover, .ant-tooltip, .ant-dropdown')) continue;
+                }
+                if (mutation.type === 'childList') {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1 && (node.tagName === 'TR' || node.tagName === 'TD' || node.querySelector('.ant-table-tbody'))) {
+                            shouldProcess = true; break;
+                        }
+                    }
+                }
+                if (shouldProcess) break;
+            }
+            if (shouldProcess) {
+                if (processDebounceTimer) clearTimeout(processDebounceTimer);
+                processDebounceTimer = setTimeout(() => {
+                    processAllCellsInBatches();
+                    addRoleButtons();
+                }, 500);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // ====== 按钮适配 ======
     function processAllTargetButtons() {
         document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
             if (BUTTON_ADAPTER_CONFIG.targetTexts.some(t => btn.textContent.includes(t)) && !processedButtons.has(btn)) {
@@ -392,57 +441,24 @@
             }
         });
     }
-
     function adaptButtonHeight(btn) {
-        const row = btn.closest('tr');
-        if (!row) return;
-        const cell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .${WRAPPER_CLASS}`);
-        if (!cell) return;
-        
+        const row = btn.closest('tr'); if(!row) return;
+        const cell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .${WRAPPER_CLASS}`); if(!cell) return;
         let h = cell.scrollHeight + BUTTON_ADAPTER_CONFIG.offset;
         h = Math.min(Math.max(h, BUTTON_ADAPTER_CONFIG.minHeight), BUTTON_ADAPTER_CONFIG.maxHeight);
-        
-        btn.style.height = h + 'px';
-        btn.style.lineHeight = h + 'px';
+        btn.style.height = h + 'px'; btn.style.lineHeight = h + 'px';
         processedButtons.add(btn);
     }
-
     function adaptButtonsInRow(row) {
-        if (!row) return;
+        if(!row) return;
         setTimeout(() => {
-            row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
+             row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
                 if (BUTTON_ADAPTER_CONFIG.targetTexts.some(t => btn.textContent.includes(t))) adaptButtonHeight(btn);
             });
         }, 500);
     }
 
-    // ====== 样式 ======
-    function addGlobalStyle() {
-        const css = `
-            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) { position: relative !important; padding: 0 !important; height: auto !important; }
-            .${WRAPPER_CLASS} { position: relative; width: 100%; max-height: ${MAX_CELL_HEIGHT}px; overflow-y: auto; padding: 4px 6px; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; font-family: system-ui; }
-            .${WRAPPER_CLASS}.single-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: ${SINGLE_LINE_HEIGHT}px; line-height: ${SINGLE_LINE_HEIGHT}px; }
-            .${WRAPPER_CLASS}.no-scroll { overflow: hidden; }
-            .${WRAPPER_CLASS} .translation { display: inline; font-weight: bold; margin-left: 8px; }
-            .${WRAPPER_CLASS}.long-text { cursor: pointer; background: rgba(24,144,255,0.05); }
-            .${WRAPPER_CLASS}.${EXPANDED_CLASS} { max-height: none !important; overflow: visible !important; background: white; border: 1px solid #1890ff; padding: 8px; z-index: 999; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-            
-            /* 按钮样式 */
-            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} { position: absolute; background: rgba(255,255,255,0.5); border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; color: #666; transition: all 0.2s; }
-            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 30px; height: 30px; font-size: 14px; }
-            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 24px; height: 24px; font-size: 12px; font-weight: bold; }
-            
-            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { background: white; border-color: #1890ff; color: #1890ff; }
-            .copied { color: #52c41a !important; border-color: #52c41a !important; }
-            .error { color: #ff4d4f !important; border-color: #ff4d4f !important; }
-        `;
-        const style = document.createElement('style');
-        style.textContent = css;
-        document.head.appendChild(style);
-    }
-
-    // ====== 智能滚动 (防止冒泡) ======
+    // ====== 智能滚动 ======
     function initSmartScrollHandling() {
         document.addEventListener('wheel', (e) => {
             const t = e.target.closest(`.${WRAPPER_CLASS}`);
@@ -460,26 +476,22 @@
     function createControlPanel() {
         controlPanel = document.createElement('div');
         controlPanel.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;background:rgba(255,255,255,0.95);border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:12px;color:#333;overflow:hidden;';
-        
-        const html = `
+        controlPanel.innerHTML = `
             <div id="panel-mini" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1890ff;font-weight:bold;background:rgba(24,144,255,0.1);">+</div>
             <div id="panel-full" style="display:none;width:250px;">
                 <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;cursor:move;" id="panel-head">
-                    <b>🔧 翻译助手 v8.4</b><span id="panel-close" style="cursor:pointer;">−</span>
+                    <b>🔧 翻译助手 v8.5</b><span id="panel-close" style="cursor:pointer;">−</span>
                 </div>
                 <div style="padding:15px;max-height:400px;overflow-y:auto;">
                     <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-trans" ${isTranslationEnabled?'checked':''}> 启用翻译 (Alt+Z)</label>
                     <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮高度适配 (=)</label>
                     <div style="margin:8px 0;">字体范围: <input id="inp-min" value="${MIN_FONT_SIZE}" style="width:30px"> - <input id="inp-max" value="${MAX_FONT_SIZE}" style="width:30px"> px</div>
-                    <div style="margin:8px 0;">单行限制: <input id="inp-limit" value="${SINGLE_LINE_CHAR_LIMIT}" style="width:40px"> 字符</div>
                     <button id="btn-apply" style="width:100%;margin-top:10px;padding:5px;background:#1890ff;color:white;border:none;border-radius:4px;cursor:pointer;">应用设置</button>
                 </div>
             </div>
         `;
-        controlPanel.innerHTML = html;
         document.body.appendChild(controlPanel);
 
-        // 事件绑定
         const mini = controlPanel.querySelector('#panel-mini');
         const full = controlPanel.querySelector('#panel-full');
         const toggle = () => {
@@ -490,35 +502,29 @@
         };
         mini.onclick = toggle;
         controlPanel.querySelector('#panel-close').onclick = toggle;
-        
         if(controlPanelMinimized) { mini.style.display = 'flex'; full.style.display = 'none'; }
         else { mini.style.display = 'none'; full.style.display = 'block'; }
 
-        // 功能绑定
         controlPanel.querySelector('#chk-trans').onchange = (e) => {
             isTranslationEnabled = e.target.checked;
             saveSettings();
-            if(isTranslationEnabled) processAllCellsInBatches(); // 重新触发翻译
+            if(isTranslationEnabled) processAllCellsInBatches();
             else {
                 document.querySelectorAll('.translation').forEach(el => el.remove());
                 document.querySelectorAll(`.${WRAPPER_CLASS}`).forEach(el => delete el.parentElement.dataset.translated);
             }
         };
-        
         controlPanel.querySelector('#chk-adapt').onchange = (e) => {
             BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked;
             saveSettings();
         };
-
         controlPanel.querySelector('#btn-apply').onclick = () => {
             MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#inp-min').value);
             MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#inp-max').value);
-            SINGLE_LINE_CHAR_LIMIT = parseInt(controlPanel.querySelector('#inp-limit').value);
             saveSettings();
             processAllCellsInBatches();
-            alert('设置已应用');
         };
-
+        
         // 拖拽
         const head = controlPanel.querySelector('#panel-head');
         let isDrag = false, startX, startY, initX, initY;
@@ -530,21 +536,15 @@
     function bindShortcut() {
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
-            // Alt+Z 切换翻译
             if (e.altKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                document.getElementById('chk-trans').click();
+                e.preventDefault(); document.getElementById('chk-trans').click();
                 GM_notification({text: `翻译 ${isTranslationEnabled?'开启':'关闭'}`, timeout: 1000});
             }
-            // - 切换面板
             if (e.key === '-' || e.code === 'Minus') {
-                e.preventDefault();
-                document.getElementById('panel-mini').click();
+                e.preventDefault(); document.getElementById('panel-mini').click();
             }
-            // = 切换按钮适配
             if (e.key === '=' || e.code === 'Equal') {
-                e.preventDefault();
-                document.getElementById('chk-adapt').click();
+                e.preventDefault(); document.getElementById('chk-adapt').click();
                 GM_notification({text: `按钮适配 ${BUTTON_ADAPTER_CONFIG.isEnabled?'开启':'关闭'}`, timeout: 1000});
             }
         });
