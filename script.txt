@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         工作台文本翻译|复制按钮|自动缩放|定制修复版
 // @namespace    http://tampermonkey.net/
-// @version      8.8.0
-// @description  修复v8.8：移除译文间隔｜严格限制长文本点击触发条件｜修复代码截断
+// @version      8.9.0
+// @description  修复v8.9：译文颜色默认｜修复=号快捷键｜优化长文本展开高度
 // @author       You
 // @match        https://breeze.opd.easebar.com/*
 // @grant        GM_xmlhttpRequest
@@ -22,7 +22,7 @@
     const SINGLE_LINE_HEIGHT = 50;
     let MIN_FONT_SIZE = 16;
     let MAX_FONT_SIZE = 32;
-    let SINGLE_LINE_CHAR_LIMIT = 60; // 只有超过这个字数，点击才会展开
+    let SINGLE_LINE_CHAR_LIMIT = 60;
 
     // 类名
     const WRAPPER_CLASS = 'fixed-height-cell';
@@ -55,7 +55,7 @@
     let controlPanel = null;
 
     function init() {
-        console.log('v8.8.0 定制修复版已加载');
+        console.log('v8.9.0 修正版已加载');
         loadSettings();
         addGlobalStyle();
         createMeasureContainer();
@@ -126,28 +126,33 @@
         cell.appendChild(container);
         addCopyBtn(cell);
 
-        // 核心修复：只有超过字数限制的，才绑定点击事件和样式
+        // 长文本点击逻辑
         if (text.length > SINGLE_LINE_CHAR_LIMIT) {
-            container.classList.add('long-text'); // 添加鼠标手型样式
+            container.classList.add('long-text');
             container.title = "点击展开查看完整内容";
             container.onclick = (e) => {
                 e.stopPropagation();
-                // 关闭其他
+                
+                // 关闭其他展开项
                 document.querySelectorAll(`.${EXPANDED_CLASS}`).forEach(el => {
                     if (el !== container) {
                         el.classList.remove(EXPANDED_CLASS);
+                        // 恢复原有样式
+                        el.style.minHeight = ''; 
                         const pCell = el.closest('td');
                         if(pCell) adjustFontSizeForCell(pCell);
                     }
                 });
 
                 container.classList.toggle(EXPANDED_CLASS);
+                
                 if (container.classList.contains(EXPANDED_CLASS)) {
-                    // 展开时固定小字体方便阅读
+                    // 展开状态：固定小字体，重置滚动，确保高度自适应
                     container.style.fontSize = '14px';
                     container.scrollTop = 0;
                 } else {
-                    // 收起时恢复自适应
+                    // 收起状态：清理样式，重新计算缩放
+                    container.style.minHeight = '';
                     adjustFontSizeForCell(cell);
                 }
             };
@@ -174,7 +179,6 @@
         cell.dataset.translating = 'true';
         
         const container = cell.querySelector(`.${WRAPPER_CLASS}`);
-        // 简单的 loading 提示，不占位置
         if (container && !container.querySelector('.trans-loading')) {
             const loading = document.createElement('span');
             loading.className = 'trans-loading';
@@ -206,8 +210,7 @@
 
         const transSpan = document.createElement('span');
         transSpan.className = 'translation';
-        // 核心修复：直接赋值，不加空格
-        transSpan.textContent = transText; 
+        transSpan.textContent = transText; // 紧跟原文
         container.appendChild(transSpan);
         
         cell.dataset.translated = 'true';
@@ -249,7 +252,7 @@
         const orig = container.querySelector('.original');
         const trans = container.querySelector('.translation');
         if (orig) text += orig.textContent;
-        if (trans) text += trans.textContent; // 这里紧接着拼，模拟无间隔
+        if (trans) text += trans.textContent;
         if (!text) text = cell.dataset.originalText || '';
 
         if (!globalMeasureContainer) createMeasureContainer();
@@ -257,7 +260,6 @@
         globalMeasureContainer.textContent = text;
 
         let size = MAX_FONT_SIZE;
-        // 如果原文+译文总长很短，视为单行
         const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT;
 
         container.classList.toggle('single-line', isSingleLine);
@@ -286,6 +288,7 @@
                 padding: 6px 8px; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; 
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 line-height: 1.4 !important; display: block !important; text-align: left !important;
+                transition: min-height 0.2s, height 0.2s;
             }
 
             .${WRAPPER_CLASS}.single-line { 
@@ -293,25 +296,29 @@
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             }
             
-            /* 只有带 long-text 类的才显示手型 */
             .${WRAPPER_CLASS}.long-text { cursor: zoom-in; }
             .${WRAPPER_CLASS}.long-text:hover { background: rgba(24,144,255,0.05); }
             
-            /* 译文样式：加粗，行内显示，无间距 */
+            /* 译文样式修正：跟随默认颜色，仅加粗 */
             .translation { 
                 display: inline; 
                 font-weight: bold; 
-                color: #1890ff;
+                color: inherit; /* 跟随父元素颜色 */
                 margin: 0 !important; 
                 padding: 0 !important;
             }
 
-            /* 悬浮层 */
+            /* 悬浮层样式修正：增加宽度和最小高度 */
             .${WRAPPER_CLASS}.${EXPANDED_CLASS} {
-                position: absolute !important; top: 0; left: 0; width: 100%; min-width: 300px;
-                height: auto !important; max-height: 500px !important;
-                background: #fff; z-index: 9999; box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-                border: 1px solid #1890ff; border-radius: 4px; padding: 12px;
+                position: absolute !important; top: 0; left: 0; 
+                width: 100%; min-width: 350px; /* 更宽一点，避免换行太频繁 */
+                height: auto !important; 
+                min-height: 120px !important; /* 确保展开后有足够高度 */
+                max-height: 600px !important;
+                background: #fff; z-index: 9999; 
+                box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+                border: 1px solid #d9d9d9; 
+                border-radius: 4px; padding: 12px;
                 overflow-y: auto; cursor: zoom-out;
             }
             
@@ -358,7 +365,7 @@
                 if (!cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) {
                     const txt = cell.textContent.trim();
                     if (!txt) return;
-                    
+
                     const btn1 = document.createElement('div');
                     btn1.className = ROLE_COPY_BTN_CLASS;
                     btn1.textContent = '+';
@@ -422,7 +429,7 @@
         controlPanel.innerHTML = `
             <div id="p-mini" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1890ff;font-weight:bold;background:rgba(24,144,255,0.1);">+</div>
             <div id="p-full" style="display:none;width:240px;">
-                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;"><b>翻译助手 v8.7</b><span id="p-close" style="cursor:pointer;">−</span></div>
+                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;"><b>翻译助手 v8.9</b><span id="p-close" style="cursor:pointer;">−</span></div>
                 <div style="padding:15px;">
                     <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-trans" ${isTranslationEnabled?'checked':''}> 启用翻译 (Alt+Z)</label>
                     <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮适配 (=)</label>
@@ -450,7 +457,8 @@
             isTranslationEnabled ? processAllCellsInBatches() : location.reload();
         };
         controlPanel.querySelector('#chk-adapt').onchange = e => {
-            BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked; GM_setValue('adapt', BUTTON_ADAPTER_CONFIG.isEnabled);
+            // 调用直接切换函数
+            toggleButtonAdapter(e.target.checked);
         };
         controlPanel.querySelector('#b-apply').onclick = () => {
             MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#i-min').value);
@@ -475,13 +483,44 @@
     function bindShortcut() {
         document.addEventListener('keydown', e => {
             if(e.target.tagName==='INPUT') return;
+            
+            // Alt+Z 切换翻译
             if(e.altKey && e.key.toLowerCase()==='z') {
-                e.preventDefault(); document.getElementById('chk-trans').click();
+                e.preventDefault(); 
+                document.getElementById('chk-trans').click();
                 GM_notification({text:`翻译 ${isTranslationEnabled?'ON':'OFF'}`, timeout:1000});
             }
-            if(e.key==='-') document.getElementById('p-mini').click();
-            if(e.key==='=') document.getElementById('chk-adapt').click();
+            // - 切换面板
+            if(e.key==='-' || e.code === 'Minus') {
+                e.preventDefault();
+                document.getElementById('p-mini').click();
+            }
+            // = 切换按钮适配 (直接调用，不依赖 click)
+            if(e.key==='=' || e.code === 'Equal') {
+                e.preventDefault();
+                toggleButtonAdapter(!BUTTON_ADAPTER_CONFIG.isEnabled);
+                // 同步 UI
+                const chk = document.getElementById('chk-adapt');
+                if(chk) chk.checked = BUTTON_ADAPTER_CONFIG.isEnabled;
+                GM_notification({text:`按钮适配 ${BUTTON_ADAPTER_CONFIG.isEnabled?'ON':'OFF'}`, timeout:1000});
+            }
         });
+    }
+
+    // 直接切换函数
+    function toggleButtonAdapter(state) {
+        BUTTON_ADAPTER_CONFIG.isEnabled = state;
+        GM_setValue('adapt', BUTTON_ADAPTER_CONFIG.isEnabled);
+        if (state) {
+            processAllTargetButtons();
+        } else {
+            // 清除样式
+            document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
+                btn.style.height = '';
+                btn.style.lineHeight = '';
+            });
+            processedButtons.delete(btn); // 清除记录
+        }
     }
 
     // 智能滚动
@@ -496,8 +535,9 @@
 
     // 按钮适配
     function processAllTargetButtons() {
+        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
         document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
-            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>btn.textContent.includes(t)) && !processedButtons.has(btn)) adaptButtonHeight(btn);
+            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>btn.textContent.includes(t))) adaptButtonHeight(btn);
         });
     }
     function adaptButtonHeight(btn) {
