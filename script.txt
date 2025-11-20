@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         工作台文本翻译|复制按钮|自动缩放|性能修复版
+// @name         工作台文本翻译|复制按钮|自动缩放|性能修复完整版
 // @namespace    http://tampermonkey.net/
 // @version      8.2.0
-// @description  保留原版所有功能｜解决Ant-Popover动画卡顿｜修复相同行不翻译｜优化字体计算性能
+// @description  基于原版修复：解决Ant-Popover卡顿｜修复相同内容处理｜修复复制按钮｜保留所有原功能
 // @author       You
 // @match        https://breeze.opd.easebar.com/*
 // @grant        GM_xmlhttpRequest
@@ -16,7 +16,7 @@
 (function () {
     'use strict';
 
-    // ====== 配置 ======
+    // ====== 配置 (保持原版) ======
     const COLUMN_INDEX = 8; // 只处理第8列
     let MIN_FONT_SIZE = 16;
     let MAX_FONT_SIZE = 32;
@@ -26,22 +26,28 @@
     let SINGLE_LINE_CHAR_LIMIT = 60;
     const COPY_BTN_CLASS = 'copy-original-btn';
     const ROLE_COPY_BTN_CLASS = 'copy-role-combined-btn';
-    const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn';
+    const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn'; // role_id列仅复制按钮
     const EXPANDED_CLASS = 'expanded-full';
 
     // ====== 性能优化配置 ======
     const PERFORMANCE_CONFIG = {
         logLevel: 'info',
-        debounceDelay: 500, // 增加防抖时间
+        batchProcessing: true,
+        debounceDelay: 500, // 增加防抖时间，减少频繁触发
+        maxProcessingTime: 1000,
+        enablePerformanceMonitor: false,
+        scrollThrottle: 100,
         maxCellsPerBatch: 50,
         smartScrollEnabled: true
     };
 
-    // ====== 智能按钮高度适配配置 ======
+    // ====== 智能按钮高度适配配置 (保持原版) ======
     const BUTTON_ADAPTER_CONFIG = {
         targetButtons: 'button.ant-btn',
         targetButtonTexts: ['Forbid', 'Rename', 'Punish'],
         containerSelector: '.ant-space-item, .ant-space',
+        rowSelector: 'td.ant-table-cell, tr',
+        transitionDuration: '1ms',
         checkInterval: 500, // 降低检查频率
         minHeightThreshold: 1,
         maxButtonHeight: 140,
@@ -59,14 +65,21 @@
     let processing = false;
     let processDebounceTimer = null;
     let roleIdColumnIndexes = [];
-    
-    // 全局测量容器（性能优化核心：复用DOM）
+    let observer = null;
+    let tableMutationObserver = null;
+
+    // ====== 性能优化新增：全局测量容器 ======
     let globalMeasureContainer = null;
 
     // ====== 按钮高度适配相关变量 ======
-    const processedButtons = new WeakSet(); // 改用 WeakSet 防止内存泄漏
+    // 优化：使用WeakSet防止内存泄漏
+    const processedButtons = new WeakSet();
+    let buttonAdapterObserver = null;
+    // 优化：移除基于文本Key的Set，改用DOM标记，解决相同行问题
+    // const processedCopyButtons = new Set();
+    // const processedCells = new Set(); 
     const pendingButtonAdaptations = new WeakMap();
-    
+
     // ====== 控制面板状态变量 ======
     let controlPanelMinimized = true;
     let controlPanel = null;
@@ -77,23 +90,38 @@
     // ====== 智能滚动相关变量 ======
     let scrollHandlersAttached = false;
 
+    // ====== 性能监控 ======
+    let performanceStats = {
+        cellsProcessed: 0,
+        translationsCompleted: 0,
+        buttonsAdapted: 0,
+        startTime: 0
+    };
+
     // ====== 日志函数 ======
     function log(level, message, data) {
         const levels = { debug: 0, info: 1, warn: 2, error: 3 };
         const currentLevel = levels[PERFORMANCE_CONFIG.logLevel] || 1;
         const messageLevel = levels[level] || 1;
+
         if (messageLevel >= currentLevel) {
-            // console[level](`🔧 ${message}`, data || '');
+            if (data) {
+                console[level](`🔧 ${message}`, data);
+            } else {
+                console[level](`🔧 ${message}`);
+            }
         }
     }
 
     function init() {
-        log('info', `工作台翻译助手 v8.2.0 性能修复版已加载`);
+        log('info', `工作台翻译与复制助手 v8.2.0 性能修复完整版 已加载`);
+        performanceStats.startTime = Date.now();
         loadSettings();
         addGlobalStyle();
         createMeasureContainer(); // 初始化测量容器
         bindShortcut();
         startStableMonitoring();
+        setupTableSortDetection();
         initButtonHeightAdapter();
         createControlPanel();
 
@@ -102,7 +130,7 @@
         }, 2000);
     }
 
-    // ====== 核心优化：全局测量容器 ======
+    // ====== 新增：创建全局测量容器 ======
     function createMeasureContainer() {
         if (globalMeasureContainer) return;
         globalMeasureContainer = document.createElement('div');
@@ -119,43 +147,54 @@
             box-sizing: border-box;
             visibility: hidden;
             pointer-events: none;
-            z-index: -9999;
+            z-index: -1000;
         `;
         document.body.appendChild(globalMeasureContainer);
     }
 
-    // ====== 智能滚动处理 ======
+    // ====== 修复的智能滚动处理 ======
     function initSmartScrollHandling() {
-        if (!PERFORMANCE_CONFIG.smartScrollEnabled || scrollHandlersAttached) return;
+        if (!PERFORMANCE_CONFIG.smartScrollEnabled || scrollHandlersAttached) {
+            return;
+        }
+
+        log('info', '初始化优化的智能滚动处理...');
 
         const handleWheelEvent = (e) => {
-            // 简单判断，只处理 fixed-height-cell 内部滚动
-            const target = e.target;
-            const cell = target.closest('.fixed-height-cell');
-            
-            if (cell && cell.scrollHeight > cell.clientHeight) {
-                const atTop = cell.scrollTop === 0;
-                const atBottom = Math.abs(cell.scrollHeight - cell.scrollTop - cell.clientHeight) < 1;
-                const up = e.deltaY < 0;
-                const down = e.deltaY > 0;
+            // 简单判断是否在固定高度单元格内
+            let target = e.target;
+            let fixedHeightCell = target.closest('.fixed-height-cell');
 
-                // 只有当内部还能滚动时，阻止冒泡，防止页面滚动
-                if ((up && !atTop) || (down && !atBottom)) {
+            if (fixedHeightCell && fixedHeightCell.scrollHeight > fixedHeightCell.clientHeight) {
+                // 只有当真的需要滚动时才拦截
+                const atTop = fixedHeightCell.scrollTop === 0;
+                const atBottom = Math.abs(fixedHeightCell.scrollHeight - fixedHeightCell.scrollTop - fixedHeightCell.clientHeight) < 1;
+                
+                const isUp = (e.deltaY || e.detail) < 0;
+                const isDown = (e.deltaY || e.detail) > 0;
+
+                // 阻止冒泡防止页面滚动，但允许内部滚动
+                if ((isUp && !atTop) || (isDown && !atBottom)) {
                     e.stopPropagation();
                 }
             }
         };
 
-        const passiveOptions = { passive: false, capture: true }; // 使用 capture 尽早拦截
+        const passiveOptions = { passive: false, capture: true };
         document.addEventListener('wheel', handleWheelEvent, passiveOptions);
+        document.addEventListener('mousewheel', handleWheelEvent, passiveOptions);
+
         scrollHandlersAttached = true;
+        log('info', '智能滚动处理已启用（优化版）');
     }
 
     function disableSmartScrollHandling() {
-        // 简化处理，暂不实现移除，影响不大
+        if (!scrollHandlersAttached) return;
+        // 简化移除逻辑
+        scrollHandlersAttached = false;
     }
 
-    // ====== 加载设置 ======
+    // ====== 加载设置 (保持原版) ======
     function loadSettings() {
         try {
             const savedMinFontSize = GM_getValue('minFontSize');
@@ -164,6 +203,7 @@
             const savedTranslationEnabled = GM_getValue('translationEnabled');
             const savedButtonAdapterEnabled = GM_getValue('buttonAdapterEnabled');
             const savedPanelMinimized = GM_getValue('panelMinimized');
+            const savedSmartScrollEnabled = GM_getValue('smartScrollEnabled');
 
             if (savedMinFontSize !== undefined) MIN_FONT_SIZE = savedMinFontSize;
             if (savedMaxFontSize !== undefined) MAX_FONT_SIZE = savedMaxFontSize;
@@ -171,11 +211,13 @@
             if (savedTranslationEnabled !== undefined) isTranslationEnabled = savedTranslationEnabled;
             if (savedButtonAdapterEnabled !== undefined) BUTTON_ADAPTER_CONFIG.isEnabled = savedButtonAdapterEnabled;
             if (savedPanelMinimized !== undefined) controlPanelMinimized = savedPanelMinimized;
+            if (savedSmartScrollEnabled !== undefined) PERFORMANCE_CONFIG.smartScrollEnabled = savedSmartScrollEnabled;
         } catch (error) {
-            log('warn', '加载设置失败', error);
+            log('warn', '加载设置失败，使用默认值:', error);
         }
     }
 
+    // ====== 保存设置 (保持原版) ======
     function saveSettings() {
         try {
             GM_setValue('minFontSize', MIN_FONT_SIZE);
@@ -184,150 +226,265 @@
             GM_setValue('translationEnabled', isTranslationEnabled);
             GM_setValue('buttonAdapterEnabled', BUTTON_ADAPTER_CONFIG.isEnabled);
             GM_setValue('panelMinimized', controlPanelMinimized);
+            GM_setValue('smartScrollEnabled', PERFORMANCE_CONFIG.smartScrollEnabled);
         } catch (error) {
             log('warn', '保存设置失败:', error);
         }
     }
 
-    // ====== 创建控制面板 (保持原样) ======
+    // ====== 创建控制面板 (完全保留原版复杂逻辑) ======
     function createControlPanel() {
-        // ... (保留原版控制面板代码结构，为了节省篇幅，这里直接复用之前的逻辑)
         controlPanel = document.createElement('div');
         controlPanel.id = 'translation-assistant-control-panel';
         controlPanel.style.cssText = `
-            position: fixed; top: 20px; right: 20px; z-index: 10000;
-            background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(0, 0, 0, 0.15);
-            border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-            font-family: sans-serif; font-size: 12px; color: #333;
-            transition: all 0.3s ease; overflow: hidden;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            padding: 0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 12px;
+            color: #333;
+            min-width: 30px;
+            width: 30px;
+            height: 30px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            overflow: hidden;
         `;
 
-        // 简化的面板构建，核心逻辑不变
-        if (controlPanelMinimized) {
-            controlPanel.style.width = '30px';
-            controlPanel.style.height = '30px';
-        } else {
-            controlPanel.style.width = '280px';
-        }
+        const miniButton = document.createElement('div');
+        miniButton.id = 'control-panel-mini-button';
+        miniButton.style.cssText = `
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #1890ff;
+            background: rgba(24, 144, 255, 0.1);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        `;
+        miniButton.textContent = '+';
+        miniButton.title = '展开控制面板 (快捷键: -)';
 
-        const innerHTML = `
-            <div id="panel-min-btn" style="width:100%;height:30px;display:${controlPanelMinimized ? 'flex' : 'none'};align-items:center;justify-content:center;cursor:pointer;background:rgba(24,144,255,0.1);color:#1890ff;font-weight:bold;">+</div>
-            <div id="panel-content" style="display:${controlPanelMinimized ? 'none' : 'block'};">
-                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;cursor:move;" id="panel-header">
-                    <b>🔧 翻译助手 v8.2</b> <span id="panel-close" style="cursor:pointer">−</span>
+        miniButton.addEventListener('click', toggleControlPanel);
+
+        panelHeader = document.createElement('div');
+        panelHeader.style.cssText = `
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(24, 144, 255, 0.1) 100%);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px 8px 0 0;
+            cursor: move;
+        `;
+
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight: bold; color: #1890ff; font-size: 13px;';
+        title.textContent = '🔧 翻译助手';
+
+        minimizeBtn = document.createElement('button');
+        minimizeBtn.style.cssText = 'background: none; border: none; font-size: 16px; cursor: pointer; padding: 2px 6px; font-weight: bold; color: #666;';
+        minimizeBtn.textContent = '−';
+        minimizeBtn.onclick = toggleControlPanel;
+
+        panelHeader.appendChild(title);
+        panelHeader.appendChild(minimizeBtn);
+
+        contentContainer = document.createElement('div');
+        contentContainer.style.cssText = 'display: none; padding: 16px; max-height: 400px; overflow-y: auto; background: rgba(255, 255, 255, 0.95);';
+
+        contentContainer.innerHTML = `
+            <div style="margin-bottom: 16px;">
+                <div style="font-weight: bold; margin-bottom: 8px; color: #333;">基础功能</div>
+                <div style="margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="translation-toggle" ${isTranslationEnabled ? 'checked' : ''} style="margin-right: 8px;"> 启用翻译功能
+                    </label>
                 </div>
-                <div style="padding:15px;max-height:400px;overflow-y:auto;">
-                    <label style="display:flex;align-items:center;margin-bottom:8px;"><input type="checkbox" id="translation-toggle" ${isTranslationEnabled ? 'checked' : ''} style="margin-right:8px"> 启用翻译</label>
-                    <label style="display:flex;align-items:center;margin-bottom:8px;"><input type="checkbox" id="button-height-adapter-toggle" ${BUTTON_ADAPTER_CONFIG.isEnabled ? 'checked' : ''} style="margin-right:8px"> 按钮高度适配</label>
-                    <div style="margin:10px 0;">字体范围: <input id="min-font-size" type="number" value="${MIN_FONT_SIZE}" style="width:40px"> - <input id="max-font-size" type="number" value="${MAX_FONT_SIZE}" style="width:40px"> px</div>
-                    <div style="margin:10px 0;">单行限制: <input id="single-line-char-limit" type="number" value="${SINGLE_LINE_CHAR_LIMIT}" style="width:50px"> 字符</div>
-                    <button id="apply-settings-btn" style="width:100%;background:#1890ff;color:white;border:none;padding:6px;border-radius:4px;cursor:pointer;margin-top:10px;">应用设置</button>
+                <div style="margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="button-height-adapter-toggle" ${BUTTON_ADAPTER_CONFIG.isEnabled ? 'checked' : ''} style="margin-right: 8px;"> 启用按钮高度适配
+                    </label>
+                </div>
+                 <div style="margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="smart-scroll-toggle" ${PERFORMANCE_CONFIG.smartScrollEnabled ? 'checked' : ''} style="margin-right: 8px;"> 启用智能滚动兼容
+                    </label>
                 </div>
             </div>
+            <div style="margin-bottom: 16px;">
+                <div style="font-weight: bold; margin-bottom: 8px; color: #333;">字体设置</div>
+                <div style="margin-bottom: 8px;">
+                    <label style="display: block; font-size: 11px; color: #666;">最小字体</label>
+                    <input type="number" id="min-font-size" value="${MIN_FONT_SIZE}" min="10" max="24" style="width: 100%; border: 1px solid #ddd; padding: 4px;">
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <label style="display: block; font-size: 11px; color: #666;">最大字体</label>
+                    <input type="number" id="max-font-size" value="${MAX_FONT_SIZE}" min="20" max="48" style="width: 100%; border: 1px solid #ddd; padding: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 11px; color: #666;">单行字符限制</label>
+                    <input type="number" id="single-line-char-limit" value="${SINGLE_LINE_CHAR_LIMIT}" min="20" max="120" style="width: 100%; border: 1px solid #ddd; padding: 4px;">
+                </div>
+            </div>
+            <button id="apply-settings-btn" style="width: 100%; padding: 8px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer;">应用设置</button>
         `;
-        controlPanel.innerHTML = innerHTML;
+
+        controlPanel.appendChild(miniButton);
+        controlPanel.appendChild(panelHeader);
+        controlPanel.appendChild(contentContainer);
         document.body.appendChild(controlPanel);
 
-        // 简单的事件绑定
-        const minBtn = controlPanel.querySelector('#panel-min-btn');
-        const closeBtn = controlPanel.querySelector('#panel-close');
-        const content = controlPanel.querySelector('#panel-content');
-        
-        const togglePanel = () => {
-            controlPanelMinimized = !controlPanelMinimized;
-            minBtn.style.display = controlPanelMinimized ? 'flex' : 'none';
-            content.style.display = controlPanelMinimized ? 'none' : 'block';
-            controlPanel.style.width = controlPanelMinimized ? '30px' : '280px';
-            controlPanel.style.height = controlPanelMinimized ? '30px' : 'auto';
-            saveSettings();
-        };
+        addDragFunctionality(controlPanel, panelHeader);
+        bindControlPanelEvents();
 
-        minBtn.onclick = togglePanel;
-        closeBtn.onclick = togglePanel;
-
-        // 拖拽
-        const header = controlPanel.querySelector('#panel-header');
-        let isDragging = false, startX, startY, initialLeft, initialTop;
-        header.onmousedown = (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = controlPanel.offsetLeft;
-            initialTop = controlPanel.offsetTop;
-            header.style.cursor = 'grabbing';
-        };
-        document.onmousemove = (e) => {
-            if (!isDragging) return;
-            controlPanel.style.left = (initialLeft + e.clientX - startX) + 'px';
-            controlPanel.style.top = (initialTop + e.clientY - startY) + 'px';
-            controlPanel.style.right = 'auto';
-        };
-        document.onmouseup = () => { isDragging = false; header.style.cursor = 'move'; };
-
-        // 应用设置
-        controlPanel.querySelector('#apply-settings-btn').onclick = () => {
-            MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#min-font-size').value);
-            MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#max-font-size').value);
-            SINGLE_LINE_CHAR_LIMIT = parseInt(controlPanel.querySelector('#single-line-char-limit').value);
-            isTranslationEnabled = controlPanel.querySelector('#translation-toggle').checked;
-            BUTTON_ADAPTER_CONFIG.isEnabled = controlPanel.querySelector('#button-height-adapter-toggle').checked;
-            saveSettings();
-            
-            // 触发刷新
-            if (isTranslationEnabled) reprocessTranslationsOnly();
-            else removeTranslationsOnly();
-            
-            adjustFontSizesOnly();
-            
-            if (BUTTON_ADAPTER_CONFIG.isEnabled) initialButtonScan();
-            else {
-                 document.querySelectorAll('button[data-height-adapted="true"]').forEach(btn => {
-                    btn.removeAttribute('data-height-adapted');
-                    btn.style.height = '';
-                });
-            }
-            
-            showNotification('设置已应用', 'success');
-        };
+        if (controlPanelMinimized) minimizeControlPanel();
+        else expandControlPanel();
     }
 
-    function showNotification(message, type) {
-        if (typeof GM_notification === 'function') {
-            GM_notification({ text: message, timeout: 2000 });
+    function minimizeControlPanel() {
+        const miniButton = controlPanel.querySelector('#control-panel-mini-button');
+        if (miniButton) miniButton.style.display = 'flex';
+        contentContainer.style.display = 'none';
+        panelHeader.style.display = 'none';
+        controlPanel.style.minWidth = '30px';
+        controlPanel.style.width = '30px';
+        controlPanel.style.height = '30px';
+        controlPanelMinimized = true;
+        saveSettings();
+    }
+
+    function expandControlPanel() {
+        const miniButton = controlPanel.querySelector('#control-panel-mini-button');
+        if (miniButton) miniButton.style.display = 'none';
+        contentContainer.style.display = 'block';
+        panelHeader.style.display = 'flex';
+        controlPanel.style.minWidth = '240px';
+        controlPanel.style.width = '280px';
+        controlPanel.style.height = '';
+        controlPanelMinimized = false;
+        saveSettings();
+    }
+
+    function toggleControlPanel() {
+        if (controlPanelMinimized) expandControlPanel();
+        else minimizeControlPanel();
+    }
+
+    function addDragFunctionality(panel, handle) {
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        handle.onmousedown = (e) => {
+            isDragging = true;
+            dragOffsetX = e.clientX - panel.offsetLeft;
+            dragOffsetY = e.clientY - panel.offsetTop;
+            handle.style.cursor = 'grabbing';
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        };
+
+        function handleMouseMove(e) {
+            if (isDragging) {
+                panel.style.left = (e.clientX - dragOffsetX) + 'px';
+                panel.style.top = (e.clientY - dragOffsetY) + 'px';
+                panel.style.right = 'auto';
+            }
+        }
+
+        function handleMouseUp() {
+            isDragging = false;
+            handle.style.cursor = 'move';
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+    }
+
+    function bindControlPanelEvents() {
+        const translationToggle = controlPanel.querySelector('#translation-toggle');
+        translationToggle.addEventListener('change', (e) => {
+            isTranslationEnabled = e.target.checked;
+            saveSettings();
+            if (isTranslationEnabled) reprocessTranslationsOnly();
+            else removeTranslationsOnly();
+        });
+
+        const buttonHeightToggle = controlPanel.querySelector('#button-height-adapter-toggle');
+        buttonHeightToggle.addEventListener('change', (e) => {
+            BUTTON_ADAPTER_CONFIG.isEnabled = e.target.checked;
+            saveSettings();
+            if (BUTTON_ADAPTER_CONFIG.isEnabled) initialButtonScan();
+        });
+
+        const smartScrollToggle = controlPanel.querySelector('#smart-scroll-toggle');
+        smartScrollToggle.addEventListener('change', (e) => {
+            PERFORMANCE_CONFIG.smartScrollEnabled = e.target.checked;
+            saveSettings();
+            if(PERFORMANCE_CONFIG.smartScrollEnabled) initSmartScrollHandling();
+        });
+
+        const applyBtn = controlPanel.querySelector('#apply-settings-btn');
+        applyBtn.addEventListener('click', applySettings);
+    }
+
+    function applySettings() {
+        MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#min-font-size').value);
+        MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#max-font-size').value);
+        SINGLE_LINE_CHAR_LIMIT = parseInt(controlPanel.querySelector('#single-line-char-limit').value);
+        saveSettings();
+        adjustFontSizesOnly();
+        showNotification('设置已应用', 'success');
+    }
+
+    function showNotification(message, type = 'info') {
+        if (typeof GM_notification !== 'undefined') {
+             GM_notification({ text: message, timeout: 2000 });
         } else {
+            // 简单的 fallback
             console.log(message);
         }
     }
 
-    // ====== 修复的核心监控系统 ======
+    // ====== 修复的稳定监控系统 (解决 ant-popover 卡顿) ======
     function startStableMonitoring() {
         log('info', '启动稳定监控系统...');
 
-        const ignoreList = ['ANT-POPOVER', 'ANT-TOOLTIP', 'ANT-MESSAGE', 'ANT-DROPDOWN'];
-
         observer = new MutationObserver((mutations) => {
             let shouldProcess = false;
-            
+
             for (const mutation of mutations) {
-                // 1. 严格过滤：如果变动源自 Popover/Tooltip，直接忽略
+                // 核心修复：过滤掉 ant-popover, ant-tooltip, ant-dropdown 的变动
                 const target = mutation.target;
                 if (target.nodeType === 1) {
-                    // 向上查找是否在忽略列表中
-                    const closestIgnore = target.closest('.ant-popover, .ant-tooltip, .ant-dropdown, .ant-select-dropdown');
-                    if (closestIgnore) continue; // 忽略此次变动
-                    
-                    // 检查自身类名
-                    if (target.classList && (target.classList.contains('ant-popover') || target.classList.contains('ant-tooltip'))) continue;
+                    if (target.matches('.ant-popover, .ant-tooltip, .ant-dropdown, .ant-select-dropdown') || 
+                        target.closest('.ant-popover, .ant-tooltip, .ant-dropdown')) {
+                        continue;
+                    }
                 }
 
-                // 2. 只关注表格行的变化
                 if (mutation.type === 'childList') {
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType === 1) {
-                            if (node.tagName === 'TR' || 
-                                node.tagName === 'TD' || 
-                                node.classList.contains('ant-table-tbody') || 
-                                node.querySelector('.ant-table-tbody')) {
+                            // 只关注表格相关的变动
+                            if (node.matches && (
+                                node.matches('.ant-table-tbody') ||
+                                node.matches('tr') ||
+                                node.querySelector('.ant-table-tbody')
+                            )) {
                                 shouldProcess = true;
                                 break;
                             }
@@ -339,7 +496,6 @@
 
             if (shouldProcess) {
                 scheduleProcessNewCells();
-                // 延迟查找 Role ID 列，因为表头可能稍后加载
                 setTimeout(() => {
                     findRoleIdColumns();
                     addCopyButtonsToRoleIdColumns();
@@ -351,10 +507,9 @@
         observer.observe(document.body, {
             childList: true,
             subtree: true,
-            attributes: false // 不监听属性，减少触发
+            attributes: false // 不监听属性变化，极大减少触发频率
         });
 
-        // 初始执行
         setTimeout(() => {
             processAllCellsInBatches();
             findRoleIdColumns();
@@ -367,39 +522,42 @@
         if (processing) return;
         processing = true;
 
-        // 修复：不再使用 Set 去重，而是使用 dataset 标记。
-        // 查找所有没有被标记为 "processed-v8" 的第8列单元格
-        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}):not([data-processed-v8="true"])`));
+        // 修复：不再使用 Set 去重，而是检查 cell 的 dataset
+        // 这样即使两行内容一样，只要它们是不同的 DOM 元素，都会被选中
+        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
         
-        // 过滤掉空内容的单元格
-        const cellsToProcess = allCells.filter(cell => {
-            const text = cell.innerText.trim(); // 使用 innerText 快速检查
-            return text.length >= 2;
-        }).slice(0, PERFORMANCE_CONFIG.maxCellsPerBatch);
+        const unprocessed = allCells.filter(cell => {
+            // 检查标记，如果未处理过
+            return !cell.dataset.processedV8;
+        });
 
-        // 立即处理这批单元格
+        const cellsToProcess = unprocessed.slice(0, PERFORMANCE_CONFIG.maxCellsPerBatch);
+
         for (const cell of cellsToProcess) {
             wrapCellContent(cell);
-            cell.setAttribute('data-processed-v8', 'true'); // 标记已处理
-            
-            // 异步执行翻译和字体调整
-            setTimeout(() => {
+            // 标记为已处理
+            cell.dataset.processedV8 = 'true';
+            performanceStats.cellsProcessed++;
+        }
+
+        // 异步处理字体和翻译，避免阻塞
+        setTimeout(() => {
+            for (const cell of cellsToProcess) {
                 adjustFontSizeForCell(cell);
                 if (isTranslationEnabled && cell.dataset.translated !== 'true') {
                     translateIfNeeded(cell);
                 }
-                // 按钮适配
                 if (BUTTON_ADAPTER_CONFIG.isEnabled) {
                     scheduleButtonAdaptationForRow(cell.closest('tr'));
                 }
-            }, 0);
-        }
-
-        processing = false;
+            }
+        }, 0);
         
-        // 如果还有剩余未处理的，继续调度
-        if (allCells.length > cellsToProcess.length) {
+        // 如果还有剩余的，继续处理
+        if (unprocessed.length > cellsToProcess.length) {
             setTimeout(processAllCellsInBatches, 100);
+        } else {
+             processing = false;
         }
     }
 
@@ -411,297 +569,382 @@
     }
 
     function reprocessTranslationsOnly() {
-        const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
+        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
         allCells.forEach(cell => {
-            cell.dataset.translated = '';
             const trans = cell.querySelector('.translation');
-            if(trans) trans.remove();
+            if (trans) trans.remove();
+            cell.dataset.translated = '';
             translateIfNeeded(cell);
         });
     }
 
     function removeTranslationsOnly() {
-        const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
+        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
         allCells.forEach(cell => {
-            cell.dataset.translated = 'false';
             const trans = cell.querySelector('.translation');
-            if(trans) trans.remove();
+            if (trans) trans.remove();
+            cell.dataset.translated = 'false';
             adjustFontSizeForCell(cell);
         });
     }
 
     function adjustFontSizesOnly() {
-        const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
-        allCells.forEach(cell => adjustFontSizeForCell(cell));
+        const allCells = Array.from(document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`));
+        allCells.forEach(cell => {
+            adjustFontSizeForCell(cell);
+        });
     }
 
-    // ====== 全局样式 ======
+    // ====== 修复的全局样式 (保持原版) ======
     function addGlobalStyle() {
         const style = document.createElement('style');
         style.textContent = `
-            /* 保持原有样式 */
             .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) {
-                position: relative !important; padding: 0 !important; height: auto !important;
+                position: relative !important;
+                vertical-align: top !important;
+                padding: 0 !important;
+                height: auto !important;
             }
             .fixed-height-cell {
-                position: relative; width: 100%; max-height: ${MAX_CELL_HEIGHT}px;
-                overflow-y: auto; padding: 4px 6px; box-sizing: border-box;
-                line-height: 1.1; white-space: pre-wrap; word-wrap: break-word;
+                position: relative;
+                width: 100%;
+                max-height: ${MAX_CELL_HEIGHT}px;
+                overflow-y: auto;
+                padding: 4px 6px;
+                box-sizing: border-box;
+                line-height: 1.1;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-size: ${MIN_FONT_SIZE}px;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
             }
             .fixed-height-cell.single-line {
-                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-                height: ${SINGLE_LINE_HEIGHT}px; line-height: ${SINGLE_LINE_HEIGHT}px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                height: ${SINGLE_LINE_HEIGHT}px;
+                line-height: ${SINGLE_LINE_HEIGHT}px;
             }
             .fixed-height-cell.no-scroll { overflow: hidden; }
+            .fixed-height-cell .original { display: inline; font-weight: normal; }
             .fixed-height-cell .translation { display: inline; font-weight: bold !important; margin-left: 8px; }
             .fixed-height-cell.long-text {
-                cursor: pointer; background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.1) 100%);
+                cursor: pointer;
+                background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.1) 100%);
             }
             .fixed-height-cell.${EXPANDED_CLASS} {
-                max-height: none !important; overflow: visible !important;
-                background: rgba(24, 144, 255, 0.05); border: 1px solid rgba(24, 144, 255, 0.3);
-                padding: 8px; border-radius: 4px; z-index: 100;
+                max-height: none !important;
+                overflow: visible !important;
+                background: rgba(24, 144, 255, 0.05);
+                border: 1px solid rgba(24, 144, 255, 0.3);
+                border-radius: 6px;
+                padding: 8px;
+                z-index: 50;
             }
             
             /* 按钮样式 */
-            .${COPY_BTN_CLASS} {
-                position: absolute; top: 4px; right: 4px; width: 24px; height: 24px;
-                background: rgba(255,255,255,0.5); border: 1px solid #ccc; border-radius: 4px;
-                display: flex; align-items: center; justify-content: center; cursor: pointer;
-                font-size: 14px; opacity: 0; transition: opacity 0.2s;
+            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} {
+                position: absolute;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                z-index: 10;
+                color: #666;
             }
-            td:hover .${COPY_BTN_CLASS} { opacity: 1; }
-            .${COPY_BTN_CLASS}:hover { background: #fff; border-color: #1890ff; }
+            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 32px; height: 35px; font-size: 14px; }
+            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 28px; height: 30px; font-size: 12px; font-weight: bold; }
+            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 30px; height: 30px; font-size: 12px; font-weight: bold; }
 
-            .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} {
-                position: absolute; top: 4px; width: 20px; height: 20px;
-                background: rgba(255,255,255,0.5); border: 1px solid #ccc; border-radius: 4px;
-                display: flex; align-items: center; justify-content: center; cursor: pointer;
-                font-size: 12px; opacity: 0; transition: opacity 0.2s;
+            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} {
+                background: rgba(255, 255, 255, 0.8);
+                border-color: rgba(24, 144, 255, 0.3);
             }
-            td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { opacity: 1; }
-            .${ROLE_COPY_BTN_CLASS} { right: 4px; }
-            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { left: 4px; }
-            .${ROLE_COPY_BTN_CLASS}:hover, .${ROLE_ID_ONLY_COPY_BTN_CLASS}:hover { background: #1890ff; color: white; border-color: #1890ff; }
+            .${COPY_BTN_CLASS}:hover, .${ROLE_COPY_BTN_CLASS}:hover, .${ROLE_ID_ONLY_COPY_BTN_CLASS}:hover {
+                transform: scale(1.1);
+                color: #1890ff;
+                background: #fff;
+            }
+            .copied { color: #52c41a !important; border-color: #52c41a !important; }
+            .error { color: #ff4d4f !important; border-color: #ff4d4f !important; }
         `;
         document.head.appendChild(style);
     }
 
-    // ====== Role ID 功能 (保持原逻辑) ======
+    // ====== Role ID 功能 (保留) ======
     function findRoleIdColumns() {
         const headers = document.querySelectorAll('.ant-table-thead th');
         roleIdColumnIndexes = [];
         headers.forEach((header) => {
-            const text = header.textContent.toLowerCase();
-            if (text.includes('role_id') || text.includes('role id') || text.includes('roleid')) {
-                const colIndex = Array.from(header.parentElement.children).indexOf(header) + 1;
-                if (colIndex !== COLUMN_INDEX && !roleIdColumnIndexes.includes(colIndex)) {
-                    roleIdColumnIndexes.push(colIndex);
+            const text = getCleanCellText(header);
+            if (text && /role_?id/i.test(text)) {
+                const columnIndex = Array.from(header.parentElement.children).indexOf(header) + 1;
+                if (columnIndex !== COLUMN_INDEX && !roleIdColumnIndexes.includes(columnIndex)) {
+                    roleIdColumnIndexes.push(columnIndex);
                 }
             }
         });
     }
 
-    function addCopyButtonsToRoleIdColumns() {
-        roleIdColumnIndexes.forEach(colIndex => {
-            const cells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${colIndex})`);
-            cells.forEach(cell => {
-                if (cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) return;
-                const text = getCleanCellText(cell);
-                if (!text) return;
-
-                const btn = document.createElement('div');
-                btn.className = ROLE_COPY_BTN_CLASS;
-                btn.textContent = '+';
-                btn.title = '复制第8列原文+RoleID';
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    const row = cell.closest('tr');
-                    const col8 = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
-                    const col8Text = col8 ? (col8.dataset.originalText || getCleanCellText(col8)) : '';
-                    const roleText = getCleanCellText(cell);
-                    copyToClipboard(col8Text + '\n' + roleText, btn);
-                };
-                cell.style.position = 'relative';
-                cell.appendChild(btn);
-            });
-        });
-    }
-    
     function addRoleIdOnlyCopyButtons() {
-        roleIdColumnIndexes.forEach(colIndex => {
-            const cells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${colIndex})`);
-            cells.forEach(cell => {
+        if (roleIdColumnIndexes.length === 0) findRoleIdColumns();
+        roleIdColumnIndexes.forEach(columnIndex => {
+            const roleCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${columnIndex})`);
+            roleCells.forEach(cell => {
                 if (cell.querySelector(`.${ROLE_ID_ONLY_COPY_BTN_CLASS}`)) return;
-                const text = getCleanCellText(cell);
-                if (!text) return;
-
-                const btn = document.createElement('div');
-                btn.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
-                btn.textContent = '-';
-                btn.title = '仅复制RoleID';
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    copyToClipboard(getCleanCellText(cell), btn);
-                };
-                cell.style.position = 'relative';
-                cell.appendChild(btn);
+                const roleText = getCleanCellText(cell);
+                if (roleText && roleText.trim()) {
+                    addRoleIdOnlyCopyButton(cell, roleText.trim());
+                }
             });
         });
     }
 
-    // ====== 单元格处理 (修复相同内容问题) ======
+    function addRoleIdOnlyCopyButton(cell, roleText) {
+        const copyBtn = document.createElement('div');
+        copyBtn.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
+        copyBtn.title = '点击复制role_id';
+        copyBtn.textContent = '-';
+        
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            copyToClipboard(roleText, copyBtn, '-');
+        };
+        cell.style.position = 'relative';
+        cell.appendChild(copyBtn);
+    }
+
+    function addCopyButtonsToRoleIdColumns() {
+        roleIdColumnIndexes.forEach(columnIndex => {
+            const roleCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${columnIndex})`);
+            roleCells.forEach(cell => {
+                if (cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) return;
+                if (getCleanCellText(cell)) {
+                    addRoleCopyButton(cell);
+                }
+            });
+        });
+    }
+
+    function addRoleCopyButton(cell) {
+        const copyBtn = document.createElement('div');
+        copyBtn.className = ROLE_COPY_BTN_CLASS;
+        copyBtn.title = '点击复制第8列原文和role_id';
+        copyBtn.textContent = '+';
+        
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            const row = cell.closest('tr');
+            const col8Cell = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
+            const col8Text = col8Cell ? (col8Cell.dataset.originalText || getCleanCellText(col8Cell)) : '';
+            let roleText = getCleanCellText(cell).replace('+', '').trim();
+            
+            if (col8Text || roleText) {
+                copyToClipboard(col8Text + '\n' + roleText, copyBtn, '+');
+            }
+        };
+        cell.style.position = 'relative';
+        cell.appendChild(copyBtn);
+    }
+
+    // ====== 智能按钮高度适配 (保留) ======
+    function initButtonHeightAdapter() {
+        setInterval(processAllTargetButtons, BUTTON_ADAPTER_CONFIG.checkInterval);
+    }
+
+    function processAllTargetButtons() {
+        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
+        const allButtons = document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
+        allButtons.forEach(button => {
+            if (isTargetButton(button) && !processedButtons.has(button)) {
+                adaptButtonHeight(button);
+            }
+        });
+    }
+
+    function isTargetButton(button) {
+        const text = button.textContent.trim();
+        return BUTTON_ADAPTER_CONFIG.targetButtonTexts.some(targetText => text.includes(targetText));
+    }
+
+    function adaptButtonHeight(button) {
+        const row = button.closest('tr');
+        if (!row) return;
+        
+        // 以第8列高度为基准
+        const targetCell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .fixed-height-cell`);
+        if (!targetCell) return;
+        
+        let height = targetCell.scrollHeight + BUTTON_ADAPTER_CONFIG.buttonHeightOffset;
+        height = Math.min(Math.max(height, BUTTON_ADAPTER_CONFIG.minButtonHeight), BUTTON_ADAPTER_CONFIG.maxButtonHeight);
+        
+        button.style.height = height + 'px';
+        button.style.lineHeight = height + 'px';
+        processedButtons.add(button);
+    }
+
+    function scheduleButtonAdaptationForRow(row) {
+        if (!row || !BUTTON_ADAPTER_CONFIG.isEnabled) return;
+        setTimeout(() => {
+            const buttons = row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
+            buttons.forEach(button => {
+                if (isTargetButton(button)) adaptButtonHeight(button);
+            });
+        }, BUTTON_ADAPTER_CONFIG.translationWaitTime);
+    }
+
+    // ====== 核心辅助函数 (修复复制和去重) ======
     function getCleanCellText(cell) {
         if (!cell) return '';
         const clone = cell.cloneNode(true);
-        const ignores = clone.querySelectorAll(`button, .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS}`);
-        ignores.forEach(el => el.remove());
+        // 移除按钮再获取文本
+        const buttons = clone.querySelectorAll(`.${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS}, button`);
+        buttons.forEach(btn => btn.remove());
         return clone.textContent.trim();
+    }
+
+    async function copyToClipboard(text, btn, originalIcon) {
+        try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = '✓';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = originalIcon;
+                btn.classList.remove('copied');
+            }, 1000);
+        } catch (err) {
+            btn.textContent = '✗';
+            btn.classList.add('error');
+            setTimeout(() => {
+                btn.textContent = originalIcon;
+                btn.classList.remove('error');
+            }, 1000);
+        }
     }
 
     function wrapCellContent(cell) {
         const text = getCleanCellText(cell);
         if (!text) return;
 
-        // 清理旧属性
-        delete cell.dataset.translated;
-        
-        // 重建结构
+        // 修复：防止重复包装，先清空
         cell.innerHTML = '';
         cell.dataset.originalText = text;
 
         const container = document.createElement('div');
         container.className = 'fixed-height-cell';
-        
+
         const originalSpan = document.createElement('span');
         originalSpan.className = 'original';
         originalSpan.textContent = text;
-        
+
         container.appendChild(originalSpan);
         cell.appendChild(container);
 
-        // 添加复制按钮
         addCopyButtonToCell(cell);
 
-        // 长文本点击展开
+        // 长文本交互
         if (text.length > SINGLE_LINE_CHAR_LIMIT) {
             container.classList.add('long-text');
-            container.onclick = (e) => {
+            container.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isExp = container.classList.contains(EXPANDED_CLASS);
-                if (isExp) {
+                if (container.classList.contains(EXPANDED_CLASS)) {
                     container.classList.remove(EXPANDED_CLASS);
                     adjustFontSizeForCell(cell);
                 } else {
                     container.classList.add(EXPANDED_CLASS);
                     container.style.fontSize = '16px';
                 }
-            };
+            });
         }
     }
 
     function addCopyButtonToCell(cell) {
-        const btn = document.createElement('div');
-        btn.className = COPY_BTN_CLASS;
-        btn.textContent = '+';
-        btn.title = '复制原文';
-        btn.onclick = (e) => {
+        const copyBtn = document.createElement('div');
+        copyBtn.className = COPY_BTN_CLASS;
+        copyBtn.title = '点击复制原文';
+        copyBtn.textContent = '+';
+        
+        copyBtn.onclick = (e) => {
             e.stopPropagation();
             const text = cell.dataset.originalText || getCleanCellText(cell);
-            copyToClipboard(text, btn);
+            copyToClipboard(text, copyBtn, '+');
         };
-        cell.appendChild(btn);
+        cell.appendChild(copyBtn);
     }
 
-    async function copyToClipboard(text, btn) {
-        try {
-            await navigator.clipboard.writeText(text);
-            const oldTxt = btn.textContent;
-            btn.textContent = '✓';
-            btn.style.color = 'green';
-            setTimeout(() => { btn.textContent = oldTxt; btn.style.color = ''; }, 1000);
-        } catch (e) {
-            btn.textContent = '✗';
-            btn.style.color = 'red';
-        }
-    }
-
-    // ====== 字体调整 (使用复用容器优化性能) ======
+    // ====== 修复的字体调整 (性能优化核心) ======
     function adjustFontSizeForCell(cell) {
         const container = cell.querySelector('.fixed-height-cell');
         if (!container || container.classList.contains(EXPANDED_CLASS)) return;
 
-        // 构造待测量的文本内容
-        let textToMeasure = '';
-        const orig = container.querySelector('.original');
-        const trans = container.querySelector('.translation');
-        if (orig) textToMeasure += orig.textContent;
-        if (trans) textToMeasure += ' ' + trans.textContent;
-        if (!textToMeasure) textToMeasure = cell.dataset.originalText || '';
+        let displayText = '';
+        const originalSpan = container.querySelector('.original');
+        const translationSpan = container.querySelector('.translation');
+        if (originalSpan) displayText += originalSpan.textContent;
+        if (translationSpan) displayText += ' ' + translationSpan.textContent;
+        if (!displayText) displayText = cell.dataset.originalText || '';
 
-        // 确保全局容器存在
+        // 使用全局容器测量
         if (!globalMeasureContainer) createMeasureContainer();
-
-        // 设置容器状态
+        
         globalMeasureContainer.style.width = container.clientWidth + 'px';
-        // 如果这里是双span结构，测量容器最好也保持一致，简化起见这里直接测纯文本，误差通常可接受
-        // 为了更精确，我们可以简单清空并放入文本
-        globalMeasureContainer.textContent = textToMeasure;
+        // 简单模拟内容
+        globalMeasureContainer.textContent = displayText;
 
-        // 核心算法：二分逼近（或者简单的向下遍历，因为通常字体比较大）
-        // 这里采用简单的向下遍历，因为范围小 (16-32)，比二分更不易出错
-        let size = MAX_FONT_SIZE;
+        let fontSize = MAX_FONT_SIZE;
         
-        // 1. 检查最大字体是否可行
-        globalMeasureContainer.style.fontSize = size + 'px';
-        
-        // 如果单行模式检查
-        const charCount = textToMeasure.length;
+        // 如果是单行模式
+        const charCount = displayText.length;
         if (charCount <= SINGLE_LINE_CHAR_LIMIT) {
             container.classList.add('single-line');
-            // 单行尽量大
-            while (size > MIN_FONT_SIZE) {
-                 globalMeasureContainer.style.fontSize = size + 'px';
-                 if (globalMeasureContainer.scrollHeight <= SINGLE_LINE_HEIGHT * 1.2) break;
-                 size -= 2;
-            }
+            // 尝试最大字体
+             globalMeasureContainer.style.fontSize = fontSize + 'px';
+             // 简单降级
+             while (fontSize > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > SINGLE_LINE_HEIGHT * 1.2) {
+                 fontSize -= 2;
+                 globalMeasureContainer.style.fontSize = fontSize + 'px';
+             }
         } else {
             container.classList.remove('single-line');
-            // 多行，适应最大高度
-            while (size > MIN_FONT_SIZE) {
-                globalMeasureContainer.style.fontSize = size + 'px';
-                if (globalMeasureContainer.scrollHeight <= MAX_CELL_HEIGHT) break;
-                size -= 1;
+            // 快速逼近
+            globalMeasureContainer.style.fontSize = fontSize + 'px';
+            while (fontSize > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > MAX_CELL_HEIGHT) {
+                fontSize -= 1;
+                globalMeasureContainer.style.fontSize = fontSize + 'px';
             }
         }
 
-        // 应用结果
-        container.style.fontSize = size + 'px';
+        container.style.fontSize = fontSize + 'px';
         
-        // 滚动条显隐
-        const hasScroll = container.scrollHeight > MAX_CELL_HEIGHT + 5;
-        if (hasScroll) container.classList.remove('no-scroll');
-        else container.classList.add('no-scroll');
+        // 滚动条状态
+        if (container.scrollHeight > MAX_CELL_HEIGHT + 5) {
+             container.classList.remove('no-scroll');
+        } else {
+             container.classList.add('no-scroll');
+        }
     }
 
-    // ====== 翻译功能 ======
+    // ====== 翻译逻辑 (保持) ======
     async function translateIfNeeded(cell) {
-        const text = cell.dataset.originalText;
-        if (!text || text.length < 2) return;
-        
-        if (translationCache.has(text)) {
-            applyTranslation(cell, translationCache.get(text));
+        const originalText = cell.dataset.originalText;
+        if (!originalText || originalText.length < 2 || cell.dataset.translated === 'true') return;
+
+        if (translationCache.has(originalText)) {
+            applyTranslation(cell, translationCache.get(originalText));
             return;
         }
 
         try {
-            const result = await translateText(text);
-            if (result && result !== text) {
-                translationCache.set(text, result);
-                applyTranslation(cell, result);
+            const translatedText = await translateText(originalText);
+            if (translatedText && translatedText !== originalText) {
+                translationCache.set(originalText, translatedText);
+                applyTranslation(cell, translatedText);
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
     }
 
     function applyTranslation(cell, translatedText) {
@@ -712,22 +955,24 @@
         span.className = 'translation';
         span.textContent = translatedText;
         container.appendChild(span);
-        cell.dataset.translated = 'true';
         
+        cell.dataset.translated = 'true';
         adjustFontSizeForCell(cell);
     }
 
-    function translateText(text) {
+    async function translateText(text) {
         return new Promise((resolve) => {
             const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
             GM_xmlhttpRequest({
-                method: 'GET', url, timeout: 5000,
-                onload: (res) => {
+                method: 'GET',
+                url: url,
+                timeout: 8000,
+                onload: res => {
                     try {
                         const data = JSON.parse(res.responseText);
-                        let str = '';
-                        if (data[0]) data[0].forEach(item => str += item[0]);
-                        resolve(str || text);
+                        let result = '';
+                        if (data[0]) data[0].forEach(item => { if(item[0]) result += item[0]; });
+                        resolve(result || text);
                     } catch (e) { resolve(text); }
                 },
                 onerror: () => resolve(text)
@@ -735,47 +980,8 @@
         });
     }
 
-    // ====== 按钮高度适配 (保留原逻辑) ======
-    function initButtonHeightAdapter() {
-        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
-        setInterval(() => {
-            if (BUTTON_ADAPTER_CONFIG.isEnabled) processAllTargetButtons();
-        }, BUTTON_ADAPTER_CONFIG.checkInterval);
-    }
-
-    function processAllTargetButtons() {
-        const btns = document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
-        btns.forEach(btn => {
-            if (isTargetButton(btn) && !processedButtons.has(btn)) {
-                adaptButtonHeight(btn);
-            }
-        });
-    }
-
-    function isTargetButton(btn) {
-        const txt = btn.textContent;
-        return BUTTON_ADAPTER_CONFIG.targetButtonTexts.some(t => txt.includes(t));
-    }
-
-    function adaptButtonHeight(btn) {
-        const row = btn.closest('tr');
-        if (!row) return;
-        const cell8 = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .fixed-height-cell`);
-        if (cell8) {
-            let h = cell8.scrollHeight + BUTTON_ADAPTER_CONFIG.buttonHeightOffset;
-            h = Math.min(Math.max(h, BUTTON_ADAPTER_CONFIG.minButtonHeight), BUTTON_ADAPTER_CONFIG.maxButtonHeight);
-            btn.style.height = h + 'px';
-            btn.style.lineHeight = h + 'px';
-            processedButtons.add(btn);
-        }
-    }
-
-    function scheduleButtonAdaptationForRow(row) {
-        if (!row || !BUTTON_ADAPTER_CONFIG.isEnabled) return;
-        setTimeout(() => {
-            const btns = row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons);
-            btns.forEach(btn => { if (isTargetButton(btn)) adaptButtonHeight(btn); });
-        }, 800);
+    function setupTableSortDetection() {
+        // 配合 startStableMonitoring 使用，这里留空或简单逻辑
     }
 
     function bindShortcut() {
@@ -791,7 +997,9 @@
         });
     }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
-
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
