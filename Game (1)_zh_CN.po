@@ -985,7 +985,7 @@ msgstr "X"
 #: /Game/Blueprints/Widgets/PC/Folders/W_FolderRitual.W_FolderRitual_C:WidgetTree.TextBlock_TitleBar.Text
 msgctxt ",295D6BE846397FA13E6BAC8C6C0358CC"
 msgid "_Ritual"
-msgstr "仪式"
+msgstr "_仪式"
 
 #. Key:	0306BE4043E3D37AF061508B8D6C3606
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/Folders/W_FolderRitual.W_FolderRitual_C:WidgetTree.W_FileImg_1.FileName
@@ -1048,7 +1048,7 @@ msgstr "IMG_DCIM_00263548"
 #: /Game/Blueprints/Widgets/PC/Folders/W_FolderTeachers.W_FolderTeachers_C:WidgetTree.W_FileText.FileName
 msgctxt ",FA96D76E4369A851AFA2F5BA614F77ED"
 msgid "Manifest"
-msgstr "命运清单"
+msgstr "清单"
 
 #. Key:	799CC664494ED0F05059C4BE93B64DAC
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/Folders/W_FolderWindow.Default__W_FolderWindow_C.FileName
@@ -1083,7 +1083,7 @@ msgstr "解剖"
 #: /Game/Blueprints/Widgets/PC/Folders/W_FolderWindow.W_FolderWindow_C:WidgetTree.W_FileImg.FileName
 msgctxt ",CB3DDFFA4E3B8314A0EEEB941695512F"
 msgid "Cool Animals"
-msgstr "酷萌动物"
+msgstr "可爱动物"
 
 #. Key:	09DE108243483D6959829DB36ABFCB7B
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:ExecuteUbergraph_W_PCMenu [Script Bytecode]
@@ -1097,7 +1097,7 @@ msgstr "管理员"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:ExecuteUbergraph_W_PCMenu [Script Bytecode]
 msgctxt ",1C3656314B241972A01C13AEC45DD55C"
 msgid "Teachers"
-msgstr "教师们"
+msgstr "教师"
 
 #. Key:	1E767F7149EAB5A7477669A63BF9F3FB
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:ExecuteUbergraph_W_PCMenu [Script Bytecode]
@@ -1181,7 +1181,7 @@ msgstr "0"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.TextBlock_64.Text
 msgctxt ",B26FA4784DD26DF00AD08DBADCBA6A9A"
 msgid "Enter"
-msgstr "进入"
+msgstr "输入"
 
 #. Key:	E230F88E480DB2E9D5DCC4A4205CE8BB
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.TextBlock_7.Text
@@ -1244,7 +1244,7 @@ msgstr "禁止入内"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.W_FileFolder_2.FileName
 msgctxt ",2F0BDAD14BAA8D34051B49B5A928F571"
 msgid "_Ritual"
-msgstr "仪式"
+msgstr "_仪式"
 
 #. Key:	5C56B7B44CF638E499DDBB8A0A64FAB0
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.W_FileFolder_3.FileName
@@ -1265,7 +1265,7 @@ msgstr "可爱猫咪"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.W_FileText.FileName
 msgctxt ",131247C4439488FB4FBA7994068C3D72"
 msgid "VERY IMPORTANT!"
-msgstr "至关重要！"
+msgstr "非常重要！"
 
 #. Key:	15378C664D3F96B9707E118BFEEAF9FA
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.W_FileText_1.FileName
@@ -1293,7 +1293,7 @@ msgstr "学生"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu.W_PCMenu_C:WidgetTree.W_SelectUser_Prof.Name
 msgctxt ",3D47386B45917BCF4188E29966B6AE15"
 msgid "Teachers"
-msgstr "教师们"
+msgstr "教师"
 
 #. Key:	F0987E304D79787FA125C88EE4C69808
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu_DirectorOffice.W_PCMenu_DirectorOffice_C:ExecuteUbergraph_W_PCMenu_DirectorOffice [Script Bytecode]
@@ -1398,7 +1398,7 @@ msgstr "9"
 #: /Game/Blueprints/Widgets/PC/W_PCMenu_DirectorOffice.W_PCMenu_DirectorOffice_C:WidgetTree.UserTitle.Text
 msgctxt ",A87315F442DDC38D93BA1FB15F2D9647"
 msgid "Enter your time of death"
-msgstr "请输入死亡时间"
+msgstr "请输入你的死亡时间"
 
 #. Key:	CE123D064A2C621FEE25E5AC3A0EFE80
 #. SourceLocation:	/Game/Blueprints/Widgets/PC/W_PCMenu_DirectorOffice.W_PCMenu_DirectorOffice_C:WidgetTree.W_File_1.FileName
@@ -1433,7 +1433,7 @@ msgstr "???"
 #: /Game/Blueprints/Widgets/PC/W_SelectUser.Default__W_SelectUser_C.Name
 msgctxt ",F779D59D428BEFDAF92CA78C4CBC63E0"
 msgid "Alumnos"
-msgstr "校友录"
+msgstr "校友"
 
 #. Key:	5DC456BC41C26A60AFF36D80540E518E
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/Chat/W_ChatCouldNotBeSent.W_ChatCouldNotBeSent_C:WidgetTree.TextMessage.Text
@@ -1454,7 +1454,7 @@ msgstr "龙太"
 #: /Game/Blueprints/Widgets/Phone/W_CallRow.W_CallRow_C:WidgetTree.TextBlock_0.Text
 msgctxt ",0D105FF844D7FBCA0BD11E88442A8B81"
 msgid "La MAMA"
-msgstr "妈妈桑"
+msgstr "妈妈"
 
 #. Key:	8438BAED4E0036DB67B352BBC0231408
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_IngamePhoneMenu.W_IngamePhoneMenu_C:ExecuteUbergraph_W_IngamePhoneMenu [Script Bytecode]
@@ -1468,7 +1468,7 @@ msgstr "新消息"
 #: /Game/Blueprints/Widgets/Phone/W_IngamePhoneMenu.W_IngamePhoneMenu_C:ExecuteUbergraph_W_IngamePhoneMenu [Script Bytecode]
 msgctxt ",A47CC7BB4DA11369638299B6257BBB07"
 msgid "New Picture"
-msgstr "新图鉴"
+msgstr "新图片"
 
 #. Key:	C915A68A40F164922F1C58A09F15DF70
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_IngamePhoneMenu.W_IngamePhoneMenu_C:ExecuteUbergraph_W_IngamePhoneMenu [Script Bytecode]
@@ -1503,7 +1503,7 @@ msgstr "新笔记"
 #: /Game/Blueprints/Widgets/Phone/W_NotificationOverlay.W_NotificationOverlay_C:ExecuteUbergraph_W_NotificationOverlay [Script Bytecode]
 msgctxt ",F3D8BC0240357C1C31235A9ACD2FFD1D"
 msgid "New Picture"
-msgstr "新图鉴"
+msgstr "新图片"
 
 #. Key:	6576CD7345C3362440643A8B082ABFC8
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_NotificationOverlay.W_NotificationOverlay_C:WidgetTree.TextNotis.Text
@@ -1531,7 +1531,7 @@ msgstr "手机"
 #: /Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.TextBlock_0.Text
 msgctxt ",CF7D9FF649D9B173CA72FF8EEDC28B0E"
 msgid "Calling..."
-msgstr "正在呼叫..."
+msgstr "呼叫中……"
 
 #. Key:	6CE9B24543F6FCE5CCC20997BA5A274E
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.TextBlock_1.Text
@@ -1552,7 +1552,7 @@ msgstr "物品"
 #: /Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.TextBlock_4.Text
 msgctxt ",31886777465CDEF2AAE9DAAFE2C5A236"
 msgid "| Message"
-msgstr "| 讯息"
+msgstr "| 消息"
 
 #. Key:	2B30576544F1914DD6A6ADA2525A9940
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.TextBlock_94.Text
@@ -1580,7 +1580,7 @@ msgstr "爸爸"
 #: /Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.W_CallRow_2.Name
 msgctxt ",E7B66CE244EA9387C52106AAA2A11458"
 msgid "Suzuki Hana"
-msgstr "雨"
+msgstr "铃木花娜"
 
 #. Key:	520166E94086E93811B95D89FD4D8AB2
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.W_CallRow_3.Name
@@ -1629,7 +1629,7 @@ msgstr "+654412335486966548945465452123321"
 #: /Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.W_ChatRow_4.Name
 msgctxt ",F8DCF4854F22D2D7D84026B47F9949C8"
 msgid "Suzuki Hana"
-msgstr "雨"
+msgstr "铃木花娜"
 
 #. Key:	C499AF304BC5442E8678B2B156CD3BE1
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.W_ChatRow_5.Name
@@ -1643,7 +1643,7 @@ msgstr "玉子"
 #: /Game/Blueprints/Widgets/Phone/W_PhoneMenu.W_PhoneMenu_C:WidgetTree.W_ChatRow_6.Name
 msgctxt ",11F398574B37D1676A8145A09F728B25"
 msgid "NekoExpress"
-msgstr "猫速通"
+msgstr "猫咪速递"
 
 #. Key:	77B9BAC3484D909298E0FB8EE03457BB
 #. SourceLocation:	/Game/Blueprints/Widgets/Phone/W_TextItem.W_TextItem_C:WidgetTree.Title_1.Text
@@ -1678,7 +1678,7 @@ msgstr "在第一人称模式下，你可以与物体互动。靠近可交互物
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Camera.Title_EN_10_E0DA89224DB79B66941E29A9164E47DF
 msgctxt "DT_Tutorial,TUT_Camera_Title_EN"
 msgid "First Person Mode"
-msgstr "第一人称视角"
+msgstr "第一人称模式"
 
 #. Key:	TUT_Camera_Title_ES
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Camera.Title_ES_14_6CF0D3654758CCED796BD79D7D490A00
@@ -1699,7 +1699,7 @@ msgstr "若发现相关线索，将自动存入手机。"
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Images.Title_EN_10_E0DA89224DB79B66941E29A9164E47DF
 msgctxt ",BB2E0C5B495E25C2391ADC98EDD6AE8E"
 msgid "Images"
-msgstr "图像"
+msgstr "图片"
 
 #. Key:	TUT_Inventory_Text_EN
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Inventory.Text_EN_15_AC1F2440479EA4019E9945B238E5D45C
@@ -1713,7 +1713,7 @@ msgstr "你可以在手机物品栏中查看已获得的道具。已使用的物
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Inventory.Text_ES_17_B8155D7749D0AB73B7E4DBA7D1F51671
 msgctxt "DT_Tutorial,TUT_Inventory_Text_ES"
 msgid "Puedes ver los objetos que obtienes en el inventario de tu móvil."
-msgstr "你可以在手机库存中查看获得的物品。"
+msgstr "你可以在手机物品栏查看获得的物品。"
 
 #. Key:	TUT_Inventory_Title_EN
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Inventory.Title_EN_10_E0DA89224DB79B66941E29A9164E47DF
@@ -1748,7 +1748,7 @@ msgstr "第一人称模式下手机将保持照明开启。用它来探索黑暗
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Light.Title_EN_10_E0DA89224DB79B66941E29A9164E47DF
 msgctxt "DT_Tutorial,F7FFD2E445C67452B8F0559BD6679AD7"
 msgid "Light"
-msgstr "光"
+msgstr "灯光"
 
 #. Key:	BDCD8EC64766EDCD9D790B9D74B60433
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Light.Title_ES_14_6CF0D3654758CCED796BD79D7D490A00
@@ -1762,14 +1762,14 @@ msgstr "露兹"
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Map.Text_EN_15_AC1F2440479EA4019E9945B238E5D45C
 msgctxt "DT_Tutorial,TUT_Map_Text_EN"
 msgid "Press M to open the map. The map shows the zone of the high school you are currently in. Also marks the rooms you have visited. Look for the storage room."
-msgstr "按M打开地图。地图将显示你在校园内的当前位置，并标记已探索过的房间。请寻找储藏室的位置。"
+msgstr "按M打开地图。地图将显示你在校园内的当前位置，并标记已探索过的房间。请寻找储物间的位置。"
 
 #. Key:	TUT_Map_Text_ES
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Map.Text_ES_17_B8155D7749D0AB73B7E4DBA7D1F51671
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Map.Text_ES_17_B8155D7749D0AB73B7E4DBA7D1F51671
 msgctxt "DT_Tutorial,TUT_Map_Text_ES"
 msgid "Pulsa M para abrir el mapa. El mapa te muestra la zona del instituto en la que te encuentras. También quedan marcadas las estancias en las que has estado. Busca el almacén."
-msgstr "按M打开地图。地图将显示你在校园内的当前位置，并标记已探索过的房间。请寻找储藏室的位置。"
+msgstr "按M打开地图。地图将显示你在校园内的当前位置，并标记已探索过的房间。请寻找储物间的位置。"
 
 #. Key:	TUT_Map_Title_EN
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Map.Title_EN_10_E0DA89224DB79B66941E29A9164E47DF
@@ -1811,7 +1811,7 @@ msgstr "胖次"
 #: /Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Phone.Text_EN_15_AC1F2440479EA4019E9945B238E5D45C
 msgctxt "DT_Tutorial,TUT_Phone_Text_EN"
 msgid "Your phone has many functions that may help you in your way. Try calling your parents."
-msgstr "手机功能丰富，旅途或许能派上用场。不妨先给父母打个电话试试。"
+msgstr "手机功能丰富，或许能派上用场。不妨先给父母打个电话试试。"
 
 #. Key:	TUT_Phone_Text_ES
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/Table/DT_Tutorial.DT_Tutorial.TUT_Phone.Text_ES_17_B8155D7749D0AB73B7E4DBA7D1F51671
@@ -1916,28 +1916,28 @@ msgstr "坠落"
 #: /Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:ExecuteUbergraph_W_InspectControls [Script Bytecode]
 msgctxt ",D11D05C4463DA2798C7188B6E1B63EE2"
 msgid "Take"
-msgstr "接受"
+msgstr "拿取"
 
 #. Key:	56744DFB4725D8813CA50AABAF657781
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.KB_Text.Text
 #: /Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.KB_Text.Text
 msgctxt ",56744DFB4725D8813CA50AABAF657781"
 msgid "Mouse | "
-msgstr "鼠辈"
+msgstr "鼠标 | "
 
 #. Key:	97AB1E3548780DF5F87FD69B37FEDA35
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.KB_Text_1.Text
 #: /Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.KB_Text_1.Text
 msgctxt ",97AB1E3548780DF5F87FD69B37FEDA35"
 msgid "E | "
-msgstr "E"
+msgstr "E | "
 
 #. Key:	6FF5199F42D797823C7547875C1BA8FC
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.TextBlock.Text
 #: /Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.TextBlock.Text
 msgctxt ",6FF5199F42D797823C7547875C1BA8FC"
 msgid "Drop"
-msgstr "坠落"
+msgstr "丢弃"
 
 #. Key:	702B8A4E4B486EDE83F457A6790558EA
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/W_InspectControls.W_InspectControls_C:WidgetTree.TextBlock_194.Text
@@ -1965,7 +1965,7 @@ msgstr "继续"
 #: /Game/Blueprints/Widgets/Tutorials/W_TutorialPopUp.W_TutorialPopUp_C:WidgetTree.TextTutorial.Text
 msgctxt ",8429897546860925EBCC678C9ED09FC6"
 msgid "Your phone has many functions that may help you in your way: \r\n-Calls -Messages -Images -Map -Inventory"
-msgstr "你的手机功能多样，助你一路前行：拨号通话、收发短信、拍摄图集、定位地图、随身行囊"
+msgstr "你的手机功能多样：\r\n拨号通话、收发消息、拍摄图片、查看地图、随身物品"
 
 #. Key:	ABA3568F47CF1ABBC80200A8BB99D119
 #. SourceLocation:	/Game/Blueprints/Widgets/Tutorials/W_TutorialPopUp.W_TutorialPopUp_C:WidgetTree.Title.Text
@@ -1986,7 +1986,7 @@ msgstr "我们都干了些什么……"
 #: /Game/Blueprints/Widgets/W_IntroBlack.Default__W_IntroBlack_C.Texts(1).Texts
 msgctxt ",76FC6508455A3D91095D36957C104BF2"
 msgid "- Come on let's go!"
-msgstr "- 我们快走吧！"
+msgstr "- 我们赶紧走吧！"
 
 #. Key:	F164BD96406080471700C186DEC0A22E
 #. SourceLocation:	/Game/Blueprints/Widgets/W_IntroBlack.Default__W_IntroBlack_C.Texts(2).Texts
@@ -2035,7 +2035,7 @@ msgstr "《学园秽闻》完整版仍在开发中，部分剧情可能大幅调
 #: /Game/Blueprints/Widgets/W_MasterIntro.W_MasterIntro_C:WidgetTree.EpilepsyWarning.Text
 msgctxt ",43C425654A672927F7A7BFAEDC36A753"
 msgid "Warning: \r\nThis game contains flashing lights that may potentially trigger seizures in people with photosensitive epilepsy. \r\nIf you have a history of epilepsy or seizures, please consult a doctor before playing. Player discretion is advised."
-msgstr "警告：本游戏包含闪烁光线效果，可能诱发光敏性癫痫症状。如有癫痫病史或相关症状，请在游玩前咨询医师。建议玩家谨慎判断自身状况。"
+msgstr "警告：本游戏包含闪烁光线效果，可能诱发光敏性癫痫症状。\r\n如有癫痫病史或相关症状，请在游玩前咨询医师。建议玩家谨慎判断自身状况。"
 
 #. Key:	85D012104FAF557B256FD59038DF2EB0
 #. SourceLocation:	/Game/Blueprints/Widgets/W_MasterIntro.W_MasterIntro_C:WidgetTree.TextBlock_162.Text
@@ -2133,7 +2133,7 @@ msgstr "你的新手机刚到。"
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_02_004.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_02_004_English"
 msgid "If you're with your friends, ask them to lend you theirs and send me a message."
-msgstr "要是跟朋友一起，借他们的用用，再给我捎个信。"
+msgstr "要是你跟朋友一起，借他们的用用，再给我发条消息。"
 
 #. Key:	C_02_005_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_02_005.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2182,14 +2182,14 @@ msgstr "喜欢被人注视的感觉吗？很好，你已成功吸引了我的目
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_005.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_04_005_English"
 msgid "Find me."
-msgstr "来寻我。"
+msgstr "来找我。"
 
 #. Key:	C_04_006_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_006.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_006.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_04_006_English"
 msgid "Getting closer."
-msgstr "有动静了。"
+msgstr "越来越近了。"
 
 #. Key:	C_04_007_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_007.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2217,21 +2217,21 @@ msgstr "杀人凶手"
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_010.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_04_010_English"
 msgid "Go to the second floor if you want answers"
-msgstr "想找答案？上二楼瞧瞧"
+msgstr "想找答案？上二楼吧"
 
 #. Key:	C_04_011_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_011.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_011.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_04_011_English"
 msgid "Here are your answers:"
-msgstr "你的答案在此："
+msgstr "你的答案："
 
 #. Key:	C_04_012_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_012.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_04_012.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_04_012_English"
 msgid "ADMIN CODE 236914"
-msgstr "管理员代码236914"
+msgstr "管理员密码236914"
 
 #. Key:	C_05_001_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_001.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2245,7 +2245,7 @@ msgstr "肯定是你惹的祸，这下咱们都得挨训了。"
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_002.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_05_002_English"
 msgid "I.. I'm sorry"
-msgstr "我...我很抱歉"
+msgstr "我……我很抱歉"
 
 #. Key:	C_05_003_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_003.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2259,14 +2259,14 @@ msgstr "我没想到会闹到这种地步"
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_004.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_05_004_English"
 msgid "I didn't want things to end this way, I swear"
-msgstr "我发誓，真没想过会走到这一步"
+msgstr "我发誓，我真没想过会变成这样"
 
 #. Key:	C_05_005_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_005.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_05_005.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_05_005_English"
 msgid "I'll call the police to get you, I don't care what the others say"
-msgstr "我这就报警抓你。别人怎么说我不管。"
+msgstr "不管别人怎么说，我这就报警抓你。"
 
 #. Key:	C_06_001_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_06_001.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2280,14 +2280,14 @@ msgstr "这简直难以置信"
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_06_002.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_06_002_English"
 msgid "You are literally the worst"
-msgstr "你简直差劲透了"
+msgstr "你太差劲了"
 
 #. Key:	C_07_001_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_07_001.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_07_001.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ChatsDialog_Table,C_07_001_English"
 msgid "I've already told you not to bother me. If you're going to get jealous, I'll pass."
-msgstr "我早说过别来烦我。要吃醋的话，恕不奉陪。"
+msgstr "我早说过别来烦我。要是嫉妒的话，我恕不奉陪。"
 
 #. Key:	C_08_001_English
 #. SourceLocation:	/Game/Dialogs/ChatsDialog_Table.ChatsDialog_Table.C_08_001.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2308,7 +2308,7 @@ msgstr "门关上了。他们把我锁在了里面。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_002.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_002_English"
 msgid "I can't open it."
-msgstr "我打不开它。"
+msgstr "我打不开。"
 
 #. Key:	D_003_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_003.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2322,14 +2322,14 @@ msgstr "手机在储物柜里，我得去拿。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_004.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_004_English"
 msgid "Really funny."
-msgstr "笑死人了。"
+msgstr "真是好笑。"
 
 #. Key:	D_005_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_005.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_005.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_005_English"
 msgid "No service. A text maybe?"
-msgstr "信号中断。发条短信试试？"
+msgstr "信号中断。发条消息试试？"
 
 #. Key:	D_006_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_006.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2343,7 +2343,7 @@ msgstr "储物柜不在这边。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_008.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_008_English"
 msgid "I should call someone."
-msgstr "该打个电话了。"
+msgstr "我该打个电话。"
 
 #. Key:	D_009_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_009.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2469,7 +2469,7 @@ msgstr "教师休息室……说不定能找到出去的钥匙。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_029.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_029_English"
 msgid "Door opened with the Teachers Room Key"
-msgstr "教师休息室钥匙开启此门"
+msgstr "用教师休息室钥匙开启"
 
 #. Key:	D_030_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_030.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2483,7 +2483,7 @@ msgstr "上村……"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_031.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_031_English"
 msgid "No service..."
-msgstr "无信号..."
+msgstr "无信号……"
 
 #. Key:	D_032_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_032.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2560,7 +2560,7 @@ msgstr "谁会把它们丢在这种地方？"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_042.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_042_English"
 msgid "Uh... Perverts."
-msgstr "咦…一群变态。"
+msgstr "啊……一群变态。"
 
 #. Key:	D_043_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_043.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2581,7 +2581,7 @@ msgstr "完整版方可使用。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_045.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_045_English"
 msgid "I thought that part of the building was no longer used."
-msgstr "我还以为这栋楼的那部分已经废弃了。"
+msgstr "我还以为这栋楼的那边已经废弃了。"
 
 #. Key:	D_046_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_046.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2595,7 +2595,7 @@ msgstr "真恶心！一看就是男生厕所。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_047.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_047_English"
 msgid "It was... a girl..."
-msgstr "那是...一个女孩..."
+msgstr "那是……一个女孩……"
 
 #. Key:	D_048_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_048.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2609,7 +2609,7 @@ msgstr "我得离开这儿……虽然不清楚发生了什么，但肯定不对
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_049.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_049_English"
 msgid "I would swear that bust had a mouth."
-msgstr "我敢发誓那半身像刚才明明有嘴。"
+msgstr "我发誓那半身像刚才明明有嘴的。"
 
 #. Key:	D_050_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_050.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2623,7 +2623,7 @@ msgstr "谁把门关上了？！"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_052.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_052_English"
 msgid "Better let go of it, I don't want to hurt myself."
-msgstr "还是放手为妙，我可不想伤着自己。"
+msgstr "还是别碰这东西，我可不想伤着自己。"
 
 #. Key:	D_054_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_054.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2658,7 +2658,7 @@ msgstr "机房里有亮光。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_058.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_058_English"
 msgid "Wait... these are pictures taken from the gym's changing room. They've been spying on us! Jerks!"
-msgstr "等等...这些照片是从健身房更衣室拍的。他们一直在监视我们！混蛋！"
+msgstr "等等……这些照片是从健身房更衣室拍的。他们一直在监视我们！混蛋！"
 
 #. Key:	D_059_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_059.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2686,7 +2686,7 @@ msgstr "憋不住了，我得去趟厕所。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_063.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_063_English"
 msgid "No way."
-msgstr "怎么可能。"
+msgstr "不会吧。"
 
 #. Key:	D_064_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_064.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2707,7 +2707,7 @@ msgstr "呼吸器？"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_066.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_066_English"
 msgid "Gotta go to the broadcasting room."
-msgstr "得去趟视听教室。"
+msgstr "得去趟广播室。"
 
 #. Key:	D_067_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_067.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2721,56 +2721,56 @@ msgstr "这大概就是我要找的那张光盘。不过里面有什么内容还
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_068.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_068_English"
 msgid "I need to open this strong box."
-msgstr "得想办法打开这个保险箱。"
+msgstr "得想办法打开这个盒子。"
 
 #. Key:	D_069_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_069.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_069.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_069_English"
 msgid "2 - B is now open."
-msgstr "2-B区域现已开放。"
+msgstr "2 - B现已开放。"
 
 #. Key:	D_070_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_070.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_070.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_070_English"
 msgid "Who steals panties and hides them? Sick!"
-msgstr "谁偷了胖次还藏起来？真变态！"
+msgstr "谁偷了内裤还藏起来？真变态！"
 
 #. Key:	D_071_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_071.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_071.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_071_English"
 msgid "It can't be... have they hidden underwear all over the school?"
-msgstr "不会吧…他们该不会把内衣藏得满学校都是吧？"
+msgstr "不会吧……他们该不会把内裤藏得满学校都是吧？"
 
 #. Key:	D_072_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_072.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_072.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_072_English"
 msgid "Yuck! I hope they are clean..."
-msgstr "呃！但愿它们是干净的……"
+msgstr "咦！但愿是干净的……"
 
 #. Key:	D_073_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_073.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_073.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_073_English"
 msgid "Argh! Please, don't let them be used..."
-msgstr "啊！求你了，千万别让他们被用上……"
+msgstr "啊！拜托，千万别让他们用上……"
 
 #. Key:	D_077_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_077.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_077.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_077_English"
 msgid "I haven't finished what I came here to do."
-msgstr "事还没办完。"
+msgstr "还有能做的事。"
 
 #. Key:	D_078_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_078.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_078.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_078_English"
 msgid "This one is for the cooking room."
-msgstr "这瓶是给家政教室的。"
+msgstr "这是烹饪室的。"
 
 #. Key:	D_079_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_079.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2784,21 +2784,21 @@ msgstr "呵，现在倒知道后悔了？当初把我关在那所死过人的高
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_080.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_080_English"
 msgid "Thank you so much, Hana! I suppose getting me outta here would be too much to ask."
-msgstr "太感谢你了，阿梅！不过想让你带我离开这儿，怕是有点强人所难啦。"
+msgstr "太感谢你了，花娜！不过想让你带我离开这儿，怕是有点强人所难啦。"
 
 #. Key:	D_081_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_081.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_081.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_081_English"
 msgid "This handwritting looks familiar..."
-msgstr "这笔迹看着眼熟..."
+msgstr "这笔迹看着眼熟……"
 
 #. Key:	D_082_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_082.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_082.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_082_English"
 msgid "Ugh... Perverts!"
-msgstr "呃…变态！"
+msgstr "呃……变态！"
 
 #. Key:	D_083_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_083.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2833,7 +2833,7 @@ msgstr "不，不对！这真的是个幽灵！"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_087.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_087_English"
 msgid "The haunted high school thing was not an urban legend."
-msgstr "闹鬼高中的传闻并非都市传说。"
+msgstr "学校闹鬼的传闻并非都市传说。"
 
 #. Key:	D_088_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_088.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2847,7 +2847,7 @@ msgstr "谁把这玩意儿塞我柜子里了？"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_089.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_089_English"
 msgid "Shower here? In the boys locker room? Nope."
-msgstr "在这儿冲澡？男更衣室里？想都别想。"
+msgstr "在这儿洗澡？男更衣室里？绝对不行。"
 
 #. Key:	D_090_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_090.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2910,35 +2910,35 @@ msgstr "我才不要穿成这样游泳呢。泳衣应该还在女生更衣室里
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_098.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_098_English"
 msgid "I'm never going to get into that pool again."
-msgstr "我再也不进那个泳池了。"
+msgstr "我再也不进那泳池了。"
 
 #. Key:	D_099_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_099.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_099.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_099_English"
 msgid "I can't get it from here. It seems like it's time to get wet."
-msgstr "我够不着那东西。看来得下水走一遭了。"
+msgstr "我够不着那东西。看来得下水一趟了。"
 
 #. Key:	D_100_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_100.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_100.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_100_English"
 msgid "I don't like this..."
-msgstr "我总觉得不太对劲..."
+msgstr "我不喜欢这样……"
 
 #. Key:	D_121_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_121.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_121.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_121_English"
 msgid "I'm not going out dressed like this. I have to find what's in the pool."
-msgstr "我才不要穿成这样出去。得先查清池子里到底藏着什么。"
+msgstr "我才不要穿成这样出去。得先查清泳池里到底藏着什么。"
 
 #. Key:	D_122_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_122.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_122.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_122_English"
 msgid "I'm not going out dressed like this. First I have to shower, otherwise the chlorine is going to ruin my soft skin."
-msgstr "我才不要这副模样出门。得先冲个澡，不然氯水该糟蹋我娇嫩的皮肤了。"
+msgstr "我才不要这副模样出去。得先洗个澡，不然氯水该糟蹋我娇嫩的皮肤了。"
 
 #. Key:	D_124_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_124.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -2959,14 +2959,14 @@ msgstr "这些花朵的颜色真让我着迷。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_126.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_126_English"
 msgid "Cute little flowers."
-msgstr "可爱的小花丛。"
+msgstr "漂亮的小花。"
 
 #. Key:	D_127_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_127.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_127.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_127_English"
 msgid "It seems that the lights won't turn on anymore."
-msgstr "灯怎么不亮了。"
+msgstr "灯好像坏了。"
 
 #. Key:	D_128_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_128.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3015,7 +3015,7 @@ msgstr "我不是孤身一人。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_134.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_134_English"
 msgid "This class is chaos."
-msgstr "这门课简直乱成一锅粥。"
+msgstr "这堂课简直乱成一锅粥。"
 
 #. Key:	D_135_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_135.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3127,7 +3127,7 @@ msgstr "这层我已经去过了。"
 #: /Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_162.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "Dialogos_-_Dialogos,D_162_English"
 msgid "There is noone relevant there."
-msgstr "那儿没有要找的人。"
+msgstr "那儿没有要找的东西。"
 
 #. Key:	D_170_English
 #. SourceLocation:	/Game/Dialogs/Dialogos_-_Dialogos.Dialogos_-_Dialogos.D_170.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3204,14 +3204,14 @@ msgstr "1 - B"
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_004.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_004_English"
 msgid "1 - C"
-msgstr "一"
+msgstr "1 - C"
 
 #. Key:	I_005_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_005.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_005.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_005_English"
 msgid "Storage Room"
-msgstr "储藏室"
+msgstr "储物间"
 
 #. Key:	I_006_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_006.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3239,7 +3239,7 @@ msgstr "医务室"
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_009.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_009_English"
 msgid "\"October 19th:& I wish I could get lost into those blue eyes and never come back. Many nights, I imagine his hands softly caressing my body. And then, his tongue travels down my neck.\""
-msgstr "十月十九日：& 多想永远沉溺在那片湛蓝里。夜深时，我幻想他的手掌轻抚过肌肤，温热的唇舌沿着颈线游移。"
+msgstr "“十月十九日：& 我多想永远沉溺在那片湛蓝眼眸里。夜深时，我幻想他的手掌轻抚过肌肤，温热的唇舌沿着我脖颈游移。”"
 
 #. Key:	I_010_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_010.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3253,35 +3253,35 @@ msgstr "天啊！听说去年有学生溜进教职工室偷拍考卷倒卖！他
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_011.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_011_English"
 msgid "A student from Yūshū High School has been reported missing after failing to return home yesterday afternoon. Local police have launched an investigation and are asking for public assistance."
-msgstr "优树高中一名学生昨日下午未归家，目前已被报失踪。当地警方已展开调查并呼吁民众提供线索。"
+msgstr "优塾高中一名学生昨日下午未归家，目前已被报失踪。当地警方已展开调查并呼吁民众提供线索。"
 
 #. Key:	I_012_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_012.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_012.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_012_English"
 msgid "2 - A"
-msgstr "二-A"
+msgstr "2 - A"
 
 #. Key:	I_013_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_013.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_013.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_013_English"
 msgid "2 - B"
-msgstr "2-B"
+msgstr "2 - B"
 
 #. Key:	I_014_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_014.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_014.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_014_English"
 msgid "2 - C"
-msgstr "二-C"
+msgstr "2 - C"
 
 #. Key:	I_015_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_015.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_015.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_015_English"
 msgid "Broadcasting Room"
-msgstr "影音室"
+msgstr "广播室"
 
 #. Key:	I_016_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_016.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3295,28 +3295,28 @@ msgstr "机房"
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_017.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_017_English"
 msgid "Cooking Room"
-msgstr "家政教室"
+msgstr "烹饪室"
 
 #. Key:	I_018_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_018.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_018.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_018_English"
 msgid "3 - A"
-msgstr "三甲"
+msgstr "3 - A"
 
 #. Key:	I_019_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_019.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_019.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_019_English"
 msgid "3 - B"
-msgstr "第三关-B"
+msgstr "3 - B"
 
 #. Key:	I_020_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_020.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_020.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_020_English"
 msgid "3 - C"
-msgstr "三碳"
+msgstr "3 - C"
 
 #. Key:	I_021_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_021.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3351,35 +3351,35 @@ msgstr "校长室"
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_025.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_025_English"
 msgid "\"October 28th:& Yesterday before last term something unbelievable happened! I lost the bus, so I had to walk home. He was riding his bike and stoped to talk to me. He asked me why I was going home all by my own. He said it was dangerous for it was getting dark. Then he invited me to join him on his bike behind him, he was going to take me home! I leaned against him to avoid falling and squeezed my bossom against his back >.< I tried to keep my skirt in place but it was imposible. I hope nobody saw my panties! At last we arrived at my place and he said goodbye with a big smile. I'm so lucky <3\""
-msgstr "10月28日：前天放学时发生了不可思议的事！我错过了公交，只能独自走回家。他骑着自行车突然停在我身边，问我为什么一个人走夜路，说天快黑了不安全。然后他邀请我坐他的后座，说要送我回家！我紧紧靠着他防止摔倒，胸口贴着他的后背>.< 努力想按住裙摆却无济于事，真希望没人看见我的胖次！最后到家时，他笑着和我道别。我真是太幸运了<3"
+msgstr "“10月28日：前天放学时发生了不可思议的事！我错过了公交，只能独自走回家。他骑着自行车突然停在我身边，问我为什么一个人走夜路，说天快黑了不安全。然后他邀请我坐他后座，说要送我回家！我紧紧靠着他防止摔倒，胸口贴着他的后背 >.< 我努力想按住裙摆却无济于事，真希望没走光！最后到家时，他笑着和我道别。我真是太幸运了 <3”"
 
 #. Key:	I_026_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_026.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_026.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_026_English"
 msgid "\"To the most beautiful voice of our high school\"<3"
-msgstr "<3 致我们高中最美妙的声音"
+msgstr "“<3 致我们高中最美妙的声音”"
 
 #. Key:	I_027_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_027.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_027.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_027_English"
 msgid "The BEAR came in.\nThen the RABBIT ran away.\nSuddenly the PIG got scared.\nBecause the ROOSTER turned off the lights."
-msgstr "熊闯了进来。兔子拔腿就跑。猪突然慌了神。因为公鸡把灯给关了。"
+msgstr "熊闯了进来。\n兔子拔腿就跑。\n猪突然慌了神。\n因为公鸡把灯给关了。"
 
 #. Key:	I_028_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_028.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_028.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_028_English"
 msgid "The teaching staff is called to an urgent meeting to discuss the recent serious incidents. Discretion regarding the media is requested."
-msgstr "教职员工请速至紧急会议，商讨近期重大事件。请对媒体保持缄默。"
+msgstr "教职员工请速速参加紧急会议，商讨近期重大事件。请对媒体保持缄默。"
 
 #. Key:	I_029_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_029.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_029.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_029_English"
 msgid "A good professor is approachable.\nA good professor is a great orator.\nA good professor is strict.\nA good professor has a mouth."
-msgstr "良师平易近人。良师妙语连珠。良师要求严格。良师能言善辩。"
+msgstr "良师平易近人。\n良师妙语连珠。\n良师治学严谨。\n良师能言善道。"
 
 #. Key:	I_030_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_030.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3393,107 +3393,84 @@ msgstr "你被耍啦 XD"
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_031.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_031_English"
 msgid "HIDE SOMEWHERE\nTHE EYES... \nDON'T LET THEM SEE YOU \n\nNOW I'M SAFE... FOR NOW..."
-msgstr "藏身暗处…  
-别让它们看见你…  
-
-暂时安全…尚可喘息…"
+msgstr "藏身暗处……\n莫让目光能及\n我暂时安全了……"
 
 #. Key:	I_032_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_032.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_032.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_032_English"
 msgid "Ever since Uemura disappeared, he's been very nervous. He keeps watching the news and gets angry every time I bring it up. Does he know anything?\nThe girl was sick, how could she leave alone?"
-msgstr "自从上村失踪后，他就变得神经兮兮的。整天守着新闻看，我一提这事他就发火。他是不是知道些什么？n那姑娘还病着呢，怎么能让她独自待着？"
+msgstr "自从上村失踪后，他就变得神经兮兮的。整天守着新闻看，我一提这事他就发火。他是不是知道些什么？\n那姑娘还病着呢，怎么能让她独自待着？"
 
 #. Key:	I_033_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_033.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_033.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_033_English"
 msgid "I've been forced to supervise other clubs. The computer club, okay, no problem. But the occult club? What do I have to do with that? It's just kid stuff..."
-msgstr "我被迫接手管理其他社团。电脑社嘛，倒还说得过去。可那个超自然研究社？我凭什么要管这种闲事？简直是小孩子过家家..."
+msgstr "我被迫接手管理其他社团。电脑社嘛，倒还说得过去。可那个超自然研究社？我凭什么要管这种闲事？简直是小孩子过家家……"
 
 #. Key:	I_034_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_034.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_034.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_034_English"
 msgid "-What are you looking for?\n-Redemption"
-msgstr "- 你在追寻什么？
-- 救赎"
+msgstr "- 你在追寻什么？\n- 救赎"
 
 #. Key:	I_035_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_035.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_035.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_035_English"
 msgid "There are places where the border between worlds is weakened, marked by pain and tragedy. There, reality breaks down and invisible cracks appear.\nIt is said that these abysses connect with dimensions that we should not know about. There, trapped souls see no light and find no rest. They only repeat their suffering, hoping for freedom… or someone to share it with."
-msgstr "世界交界之处存在薄弱地带，总以苦痛与悲剧为标记。现实在此崩裂，隐形的裂隙悄然显现。  
-传说这些深渊连接着本不该知晓的异界。受困的灵魂不见天光，不得安息，唯有在无尽折磨中循环往复，渴望着解脱……或有人同堕深渊。"
+msgstr "世界交界处存在薄弱地带，总以苦痛与悲剧为标记。现实在此崩裂，隐形的裂隙悄然显现。\n传说这些深渊连接着本不该知晓的异界。受困的灵魂不见天光，不得安息，唯有在无尽折磨中循环往复，渴望着解脱……或有人同堕深渊。"
 
 #. Key:	I_036_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_036.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_036.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_036_English"
 msgid "I didn't expect to find something like this. Not in that place, not at that time. It was a mistake, I know. No one would have believed me, especially if they found out what was down there."
-msgstr "真没想到会在那儿撞见那东西，偏偏还是那个节骨眼。我知道这步走错了——任谁都不会信我，尤其当他们发现地底藏着什么的时候。"
+msgstr "真没想到会在那儿撞见那东西，偏偏还是那个节骨眼。我知道这步走错了——任谁都不会信我，特别是在他们发现地底藏着什么的时候。"
 
 #. Key:	I_037_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_037.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_037.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_037_English"
 msgid "Draw a circle.\nPlace 5 containers in a circular manner around the circle.\nPlace a certain number of candles next to the containers.\nPlace tributes in the containers depending on the number of candles.\n1 Candle: Knife\n2 Candles: Hateful flower\n3 Candles: Human skull\n4 Candles: Obsidian\n5 Candles: Nails"
-msgstr "画一个圆。  
-在圆周围摆放五个容器。  
-容器旁放置若干蜡烛。  
-根据蜡烛数量向容器中放入祭品：  
-一支烛：短刀  
-两支烛：怨毒之花  
-三支烛：人类颅骨  
-四支烛：黑曜石  
-五支烛：铁钉"
+msgstr "画一个圆。\n在圆周围摆放五个容器。\n容器旁放置若干蜡烛。\n根据蜡烛数量向容器中放入祭品：\n一支蜡烛：短刀\n两支蜡烛：怨恨之花\n三支蜡烛：人类颅骨\n四支蜡烛：黑曜石\n  五支蜡烛：钉子"
 
 #. Key:	I_038_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_038.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_038.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_038_English"
 msgid "To alter the ritual swap the following items:\nHateful flower -> Joyful flower\nObsidian -> Jade\nKnife -> Bandages\nNails -> Something with emotional value\n\nThe skull remains in the same position."
-msgstr "调整仪式需替换以下物品：  
-憎恨之花 → 欢悦之花  
-黑曜石 → 青玉  
-匕首 → 布带  
-铁钉 → 寄托情思之物  
-
-颅骨保持原位不动。"
+msgstr "调整仪式需替换以下物品：\n憎恨之花 → 欢悦之花\n黑曜石 → 玉石\n 匕首 → 绷带\n钉子 → 寄托情思之物\n颅骨保持原位不动。"
 
 #. Key:	I_039_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_039.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_039.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_039_English"
 msgid "The other day I found some files about rituals on the school computers. I suspect my wife is trying to cast some kind of weird spell on me. I don't normally believe in this stuff but weird things are starting to happen at school.\nI've been looking for a way to protect myself from the ritual and all I've been able to find are weird things on old internet forums."
-msgstr "前几天在学校电脑里发现了些仪式相关的文件。我怀疑妻子想对我施什么古怪的咒语。平时我根本不信这套，但学校最近怪事频发。我一直在找抵御仪式的方法，可翻遍老旧论坛也只找到些诡异的内容。"
+msgstr "前几天在学校电脑里发现了些仪式相关的文件。我怀疑妻子想对我施什么古怪的咒语。平时我根本不信这套，但学校最近怪事频发。\n我一直在找抵御仪式的方法，可翻遍老旧论坛也只找到些诡异的内容。"
 
 #. Key:	I_040_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_040.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_040.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_040_English"
 msgid "Math: Solve problems 1-10 on page 45.\n\nI think the math teacher has it in for us.\nShe's so annoying, she doesn't leave me alone."
-msgstr "数学：完成第45页的1-10题。  
-我觉得数学老师故意针对我们。  
-她真烦人，老盯着我不放。"
+msgstr "数学：完成第45页的1-10题。\n我觉得数学老师故意针对我们。\n她真烦人，老盯着我不放。"
 
 #. Key:	I_041_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_041.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_041.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_041_English"
 msgid "(\\  /)\n( - .-)\nc(“)(“)\n"
-msgstr "(\  /)n( - .-)nc(“)(“)n"
+msgstr "(\\  /)\n( - .-)\nc(“)(“)\n"
 
 #. Key:	I_042_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_042.English_17_621B01F848210D09A08F3A857A68FBCE
 #: /Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_042.English_17_621B01F848210D09A08F3A857A68FBCE
 msgctxt "ItemsDialog_Table,I_042_English"
 msgid "I saw him talking to a girl from another class and I got jealous. I have to control myself.\n\nI can't believe it. We kissed in the computer room when it was empty.\nTouching his lips makes me feel hot."
-msgstr "我看见他和别班女生说话，心里直冒酸水。得控制住自己才行。
-
-真不敢相信——我们居然在没人的机房接吻了。碰到他嘴唇时，我浑身都发烫。"
+msgstr "我看见他和别班女生说话，让我无比羡慕。得控制住自己才行。\n\n真不敢相信——我们居然在没人的机房接吻了。\n碰到他嘴唇时，我浑身都发烫。"
 
 #. Key:	I_043_English
 #. SourceLocation:	/Game/Dialogs/ItemsDialog_Table.ItemsDialog_Table.I_043.English_17_621B01F848210D09A08F3A857A68FBCE
@@ -3507,7 +3484,7 @@ msgstr "他若让你信他，快逃。"
 #: /Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._Password.Title_4_E2793307411B00F86BD94A83D66564B2
 msgctxt ",1976A77F4BA5258100AF729F25840007"
 msgid "Answer"
-msgstr "回答"
+msgstr "答案"
 
 #. Key:	65C5CF7C41965D0F746228A9F4F33A8D
 #. SourceLocation:	/Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextAnimalClue.Title_4_E2793307411B00F86BD94A83D66564B2
@@ -3542,21 +3519,21 @@ msgstr "春树 <3"
 #: /Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextDirectorNote.Title_4_E2793307411B00F86BD94A83D66564B2
 msgctxt ",0447DEDA4854B6F052DC88A07BCD679D"
 msgid "Director Announcement"
-msgstr "总监通告"
+msgstr "主任通告"
 
 #. Key:	345CBB154601EFF97648118D83AD98A9
 #. SourceLocation:	/Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextEyes.Title_4_E2793307411B00F86BD94A83D66564B2
 #: /Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextEyes.Title_4_E2793307411B00F86BD94A83D66564B2
 msgctxt ",345CBB154601EFF97648118D83AD98A9"
 msgid "Eyes"
-msgstr "凝视"
+msgstr "眼"
 
 #. Key:	2812DF91446F976373DF58B4E25818A0
 #. SourceLocation:	/Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextLibrary.Title_4_E2793307411B00F86BD94A83D66564B2
 #: /Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextLibrary.Title_4_E2793307411B00F86BD94A83D66564B2
 msgctxt ",2812DF91446F976373DF58B4E25818A0"
 msgid "Library Note"
-msgstr "图书室手记"
+msgstr "图书室笔记"
 
 #. Key:	F8D622AE4D4554454F3F98BAC9C22D74
 #. SourceLocation:	/Game/Dialogs/Text_StructTableDataTable.Text_StructTableDataTable._TextNewspaper.Title_4_E2793307411B00F86BD94A83D66564B2
@@ -3633,55 +3610,7 @@ msgstr "???"
 #: /Game/MenuSystemPro/Text/Menu/ST_Credits.ST_Credits
 msgctxt "ST_Credits,CreditsText"
 msgid "Credits\r\n\r\nOriginal Concept\r\nPerson #1\r\n\r\nDirector\r\nPerson #2\r\n\r\nLead Designer\r\nPerson #3\r\n\r\nDesigner\r\nPerson #4\r\nPerson #5\r\n\r\nLevel Design\r\nPerson #6\r\nPerson #7\r\n\r\nStory\r\nPerson #8\r\nPerson #9\r\n\r\nLead Programming\r\nPerson #10\r\n\r\nProgramming\r\nPerson #11\r\nPerson #12\r\n\r\nLead Artist \r\nPerson #13\r\n\r\n3D Artist\r\nPerson #14\r\nPerson #15\r\n\r\nAnimation \r\nPerson #16\r\n\r\nCinematics\r\nPerson #17\r\n\r\nMusic\r\nPerson #18\r\n\r\nSpecial Thanks to\r\nYou\r\nEPIC Games Inc."
-msgstr "制作人员
-
-原案构想
-人物一
-
-总监
-人物二
-
-主设计师
-人物三
-
-设计师
-人物四
-人物五
-
-关卡设计
-人物六
-人物七
-
-剧情脚本
-人物八
-人物九
-
-主程序
-人物十
-
-程序开发
-人物十一
-人物十二
-
-主美术
-人物十三
-
-三维美术
-人物十四
-人物十五
-
-动画制作
-人物十六
-
-过场动画
-人物十七
-
-音乐作曲
-人物十八
-
-特别鸣谢
-您
-EPIC Games Inc."
+msgstr "制作人员\r\n\r\n原创概念\r\n人员#1\r\n\r\n导演\r\n人员#2\r\n\r\n主设计师\r\n人员#3\r\n\r\n设计师\r\n人员#4\r\n人员#5\r\n\r\nLevel Design\r\n人员#6\r\n人员#7\r\n\r\nStory\r\n人员#8\r\n人员#9\r\n\r\n主程序员\r\n人员#10\r\n\r\n1编程\r\n人员#11\r\n人员#12\r\n\r\n主美\r\n人员#13\r\n\r\n3D美术\r\n人员#14\r\n人员#15\r\n\r\n动画 \r\n人员#16\r\n\r\n影片制作\r\n人员#17\r\n\r\n音乐\r\n人员#18\r\n\r\n特别鸣谢\r\n你\r\nEPIC Games Inc."
 
 #. Key:	AudioSettings_Audio
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3779,7 +3708,7 @@ msgstr "跳跃"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_Jump_Subtext"
 msgid "Key/Button to jump"
-msgstr "跳跃键"
+msgstr "跳跃/按键跳跃"
 
 #. Key:	ControlsSettings_Bindings_MoveBackward
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3793,7 +3722,7 @@ msgstr "向后移动"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_MoveBackward_Subtext"
 msgid "Key/Button to move backward"
-msgstr "后退移动键"
+msgstr "按键后移"
 
 #. Key:	ControlsSettings_Bindings_MoveForward
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3807,7 +3736,7 @@ msgstr "前进"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_MoveForward_Subtext"
 msgid "Key/Button to move forward"
-msgstr "前进按键"
+msgstr "按键前进"
 
 #. Key:	ControlsSettings_Bindings_MoveLeft
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3821,7 +3750,7 @@ msgstr "向左移动"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_MoveLeft_Subtext"
 msgid "Key/Button to move left"
-msgstr "左移键"
+msgstr "按键后移"
 
 #. Key:	ControlsSettings_Bindings_MoveRight
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3835,7 +3764,7 @@ msgstr "右移"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_MoveRight_Subtext"
 msgid "Key/Button to move right"
-msgstr "右移键"
+msgstr "按键右移"
 
 #. Key:	ControlsSettings_Bindings_None
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3856,21 +3785,21 @@ msgstr "震动"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Bindings_Rumble_Subtext"
 msgid "Toggle controller vibration feature"
-msgstr "开启/关闭控制器震动功能"
+msgstr "开关柄震动功能"
 
 #. Key:	ControlsSettings_GamePadSettings
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_GamePadSettings"
 msgid "Gamepad Bindings"
-msgstr "手柄按键配置"
+msgstr "手柄按键绑定"
 
 #. Key:	ControlsSettings_GamePadSettings_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_GamePadSettings_Subtext"
 msgid "Set gamepad bindings"
-msgstr "设置手柄按键配置"
+msgstr "设置手柄按键绑定"
 
 #. Key:	ControlsSettings_InvertX
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3884,7 +3813,7 @@ msgstr "X轴反转"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_InvertX_Subtext"
 msgid "Invert the X axis"
-msgstr "反转X轴"
+msgstr "X轴反转"
 
 #. Key:	ControlsSettings_InvertY
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3919,7 +3848,7 @@ msgstr "设置键盘与鼠标按键"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,ControlsSettings_Title"
 msgid "Controls"
-msgstr "操作指南"
+msgstr "操作"
 
 #. Key:	ControlsSettings_XSensitivity
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3954,7 +3883,7 @@ msgstr "设置Y轴灵敏度"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,Credits_Title"
 msgid "Credits"
-msgstr "制作人员名单"
+msgstr "制作人员"
 
 #. Key:	DecisionDialog_ApplyChangedSettings
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -3982,14 +3911,14 @@ msgstr "退出游戏"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DecisionDialog_KeyAlreadyInUse"
 msgid "Key is already in use. \r\nOverwrite other bindings?"
-msgstr "按键已被占用。是否覆盖其他绑定？"
+msgstr "按键已被占用。是否覆盖其他绑定按键？"
 
 #. Key:	DecisionDialog_No
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DecisionDialog_No"
 msgid "No"
-msgstr "不"
+msgstr "否"
 
 #. Key:	DecisionDialog_Yes
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4052,14 +3981,14 @@ msgstr "水平视场角度。常用数值范围为60至120度。"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_LockFPS"
 msgid "Lock FPS"
-msgstr "锁定帧率"
+msgstr "锁定帧数"
 
 #. Key:	DisplaySettings_LockFPS_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_LockFPS_Subtext"
 msgid "Locks the frames per second (FPS) to a fixed value. \r\nIt's advised to lock the FPS, if the frame rate is highly variable \r\nor exceeds your monitors refresh rate."
-msgstr "将每秒帧数锁定为固定值。若帧率波动剧烈或超出显示器刷新率，建议开启此选项。"
+msgstr "将每秒帧数锁定为固定值。\r\n若帧率波动剧烈或超出显示器刷新率，建议开启此选项。"
 
 #. Key:	DisplaySettings_LockFPS_Unlocked
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4087,7 +4016,7 @@ msgstr "设置百分比分辨率缩放以调整渲染分辨率。50%的缩放比
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_ShowFPSCounter"
 msgid "Show FPS counter"
-msgstr "显示帧率计数器"
+msgstr "显示帧率"
 
 #. Key:	DisplaySettings_ShowFPSCounter_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4129,14 +4058,14 @@ msgstr "窗口模式"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_WindowMode_Borderless"
 msgid "Borderless"
-msgstr "无界"
+msgstr "无边框"
 
 #. Key:	DisplaySettings_WindowMode_FullScreen
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_WindowMode_FullScreen"
 msgid "Full Screen"
-msgstr "全屏显示"
+msgstr "全屏"
 
 #. Key:	DisplaySettings_WindowMode_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4150,7 +4079,7 @@ msgstr "选择游戏显示模式"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,DisplaySettings_WindowMode_Windowed"
 msgid "Windowed"
-msgstr "窗口模式"
+msgstr "窗口化"
 
 #. Key:	GameplaySettings_Difficulty
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4178,14 +4107,14 @@ msgstr "专家"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GameplaySettings_Difficulty_Hard"
 msgid "Hard"
-msgstr "艰难"
+msgstr "困难"
 
 #. Key:	GameplaySettings_Difficulty_Medium
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GameplaySettings_Difficulty_Medium"
 msgid "Medium"
-msgstr "灵媒"
+msgstr "普通"
 
 #. Key:	GameplaySettings_Difficulty_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4255,7 +4184,7 @@ msgstr "启用环境光遮蔽"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_AntiAliasingMethod"
 msgid "Anti Aliasing Method"
-msgstr "抗锯齿方法"
+msgstr "抗锯齿方案"
 
 #. Key:	GraphicsSettings_AntiAliasingMethod_None
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4297,14 +4226,14 @@ msgstr "性能基准测试"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_Bloom"
 msgid "Bloom"
-msgstr "繁花绽放"
+msgstr "泛光"
 
 #. Key:	GraphicsSettings_Bloom_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_Bloom_Subtext"
 msgid "Enable bloom."
-msgstr "开启光晕效果。"
+msgstr "开启泛光效果。"
 
 #. Key:	GraphicsSettings_DLSS
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4318,7 +4247,7 @@ msgstr "DLSS"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_DLSS_Quality0"
 msgid "Performance"
-msgstr "性能表现"
+msgstr "性能"
 
 #. Key:	GraphicsSettings_DLSS_Quality1
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4346,7 +4275,7 @@ msgstr "极致性能"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_DLSS_Quality4"
 msgid "Ultra Quality"
-msgstr "极致画质"
+msgstr "极致品质"
 
 #. Key:	GraphicsSettings_DLSS_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4388,7 +4317,7 @@ msgstr "设置植被品质"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_Graphics"
 msgid "Graphics"
-msgstr "画面表现"
+msgstr "画面"
 
 #. Key:	GraphicsSettings_LensFlares
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4458,7 +4387,7 @@ msgstr "光线追踪环境光遮蔽"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_RaytracedAmbientOcclusion_Subtext"
 msgid "Ray Traced Ambient Occlusion (RTAO) accurately shadows areas blocking ambient lighting better grounding objects in the environment, such as shadowing the corners and edges where walls meet or adding depth to the crevices and wrinkles in skin."
-msgstr "光线追踪环境光遮蔽（RTAO）精准模拟环境光被遮挡形成的阴影，让物体更自然地融入场景——无论是墙垣交角的暗影过渡，还是肌肤褶皱间的深邃沟壑，皆能呈现立体真实的遮蔽效果。"
+msgstr "光线追踪环境光遮蔽（RTAO）精准模拟环境光被遮挡形成的阴影，让物体更自然地融入场景——无论是角落的阴影过渡，还是肌肤褶皱间的深邃沟壑，皆能呈现立体真实的遮蔽效果。"
 
 #. Key:	GraphicsSettings_RayTracedGlobalIllumination
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4626,7 +4555,7 @@ msgstr "设置纹理质量"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_Title"
 msgid "Graphics"
-msgstr "画面表现"
+msgstr "画面"
 
 #. Key:	GraphicsSettings_ViewDistance
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4647,7 +4576,7 @@ msgstr "远"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,GraphicsSettings_ViewDistance_Near"
 msgid "Near"
-msgstr "近在咫尺"
+msgstr "近"
 
 #. Key:	GraphicsSettings_ViewDistance_Subtext
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4661,7 +4590,7 @@ msgstr "物体将根据与玩家的距离远近隐藏。"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,IngameMenu_Load"
 msgid "Load"
-msgstr "载入中"
+msgstr "加载"
 
 #. Key:	IngameMenu_MainMenu
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4689,7 +4618,7 @@ msgstr "继续游戏"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,IngameMenu_Save"
 msgid "Save"
-msgstr "保存进度"
+msgstr "保存"
 
 #. Key:	Intro_PressAnyKey
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4710,14 +4639,14 @@ msgstr "开始游戏"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,MainMenu_Loading"
 msgid "Loading..."
-msgstr "正在加载中…"
+msgstr "加载中……"
 
 #. Key:	MainMenu_NewGame
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,MainMenu_NewGame"
 msgid "New Game"
-msgstr "开始新游戏"
+msgstr "新游戏"
 
 #. Key:	MainMenu_Options
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4752,14 +4681,14 @@ msgstr "显示"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,OptionsMenu_Gameplay"
 msgid "Gameplay"
-msgstr "游戏玩法"
+msgstr "游戏"
 
 #. Key:	OptionsMenu_Graphics
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,OptionsMenu_Graphics"
 msgid "Graphics"
-msgstr "画面表现"
+msgstr "画面"
 
 #. Key:	Question_Hole
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4780,14 +4709,14 @@ msgstr "触碰光芒？"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,Question_Portal"
 msgid "Enter the portal?"
-msgstr "是否进入传送门？"
+msgstr "进入传送门？"
 
 #. Key:	Question_Redemption
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,Question_Redemption"
 msgid "\"Redemption\""
-msgstr "救赎"
+msgstr "“救赎”"
 
 #. Key:	Settings_Apply
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4815,7 +4744,7 @@ msgstr "关"
 #: /Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
 msgctxt "ST_Menu,Settings_On"
 msgid "On"
-msgstr "继续"
+msgstr "开"
 
 #. Key:	Settings_Reset
 #. SourceLocation:	/Game/MenuSystemPro/Text/Menu/ST_Menu.ST_Menu
@@ -4836,7 +4765,7 @@ msgstr "重置存档"
 #: /Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 msgctxt ",8A0D2C8148BED3D1DFC80BAA163EDBE5"
 msgid "Remember to check the cabinets. "
-msgstr "柜子都仔细搜搜。"
+msgstr "仔细搜搜柜子。"
 
 #. Key:	F94418DC4B8A9BB8931DC78399D4AEDA
 #. SourceLocation:	/Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_0.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
@@ -4857,7 +4786,7 @@ msgstr "随时可以翻看手机里的已读笔记。"
 #: /Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_2.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 msgctxt ",DAF752114C50A2BFA6E6658E5001EC78"
 msgid "Not every shadow is your enemy. But many are."
-msgstr "并非所有暗影皆为敌。但大多如此。"
+msgstr "并非所有暗影皆为敌人。但大多都是。"
 
 #. Key:	6319FB0947E4B9D660C340B6EDAF934B
 #. SourceLocation:	/Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_3.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
@@ -4871,7 +4800,7 @@ msgstr "并非每扇紧锁的门都该被开启……至少现在如此。"
 #: /Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_4.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 msgctxt ",F49379274B361AB93519FEB419B10A3E"
 msgid "Running might save you… or attract something worse."
-msgstr "逃跑或许能保命…也可能引来更糟的东西。"
+msgstr "逃跑或许能保命……也可能引来更糟的东西。"
 
 #. Key:	C609820B4DBF5C1ED59D62BE01CCDF24
 #. SourceLocation:	/Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_5.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
@@ -4885,14 +4814,14 @@ msgstr "卡关时别忘了翻翻手机里的照片。"
 #: /Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_6.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 msgctxt ",41A8BD344C43066D512D17A33D954414"
 msgid "What you ignore now may haunt you later."
-msgstr "今日视若无睹，他日必成梦魇。"
+msgstr "此刻视若无睹，日后必成大患。"
 
 #. Key:	D9C4CA764617296260E690A3CBC44D31
 #. SourceLocation:	/Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_7.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 #: /Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_7.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
 msgctxt ",D9C4CA764617296260E690A3CBC44D31"
 msgid "The longer you stay, the less you feel like yourself."
-msgstr "待得越久，越觉得不像自己。"
+msgstr "待得越久，你越觉得不像自己。"
 
 #. Key:	519BB2454FD0E5F3C850C7BF25D28DB8
 #. SourceLocation:	/Game/UI/Resources/Struct/LoadingInfoTable.LoadingInfoTable.NewRow_8.Text_5_5F0A8A4046EFB02CABFD07A176F45A87
