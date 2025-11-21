@@ -1,0 +1,558 @@
+// ==UserScript==
+// @name         工作台文本翻译|复制按钮|自动缩放|定制修复版
+// @namespace    http://tampermonkey.net/
+// @version      8.9.0
+// @description  修复v8.9：译文颜色默认｜修复=号快捷键｜优化长文本展开高度
+// @author       You
+// @match        https://breeze.opd.easebar.com/*
+// @grant        GM_xmlhttpRequest
+// @grant        GM_notification
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @connect      translate.googleapis.com
+// @run-at       document-idle
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    // ====== 配置 ======
+    const COLUMN_INDEX = 8;
+    const MAX_CELL_HEIGHT = 165;
+    const SINGLE_LINE_HEIGHT = 50;
+    let MIN_FONT_SIZE = 16;
+    let MAX_FONT_SIZE = 32;
+    let SINGLE_LINE_CHAR_LIMIT = 60;
+
+    // 类名
+    const WRAPPER_CLASS = 'fixed-height-cell';
+    const EXPANDED_CLASS = 'expanded-overlay';
+    const COPY_BTN_CLASS = 'copy-original-btn';
+    const ROLE_COPY_BTN_CLASS = 'copy-role-combined-btn';
+    const ROLE_ID_ONLY_COPY_BTN_CLASS = 'copy-role-id-only-btn';
+
+    // 变量
+    let isTranslationEnabled = true;
+    const translationCache = new Map();
+    let processing = false;
+    let processDebounceTimer = null;
+    let roleIdColumnIndexes = [];
+    let globalMeasureContainer = null;
+    
+    // 按钮适配
+    const BUTTON_ADAPTER_CONFIG = {
+        isEnabled: false,
+        targetButtons: 'button.ant-btn',
+        targetTexts: ['Forbid', 'Rename', 'Punish'],
+        minHeight: 20,
+        maxHeight: 140,
+        offset: -18
+    };
+    const processedButtons = new WeakSet();
+
+    // 面板
+    let controlPanelMinimized = true;
+    let controlPanel = null;
+
+    function init() {
+        console.log('v8.9.0 修正版已加载');
+        loadSettings();
+        addGlobalStyle();
+        createMeasureContainer();
+        createControlPanel();
+        bindShortcut();
+        startStableMonitoring();
+        
+        const retry = () => {
+            processAllCellsInBatches();
+            addRoleButtons();
+        };
+        setTimeout(retry, 1500);
+        setTimeout(retry, 3000);
+
+        setInterval(() => {
+            if (BUTTON_ADAPTER_CONFIG.isEnabled) processAllTargetButtons();
+        }, 800);
+
+        initSmartScrollHandling();
+    }
+
+    // ====== 核心处理 ======
+    function processAllCellsInBatches() {
+        if (processing) return;
+        processing = true;
+
+        const allCells = document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX})`);
+        const cellsToProcess = Array.from(allCells).filter(cell => {
+            if (cell.querySelector('input, textarea')) return false;
+            return !cell.querySelector(`.${WRAPPER_CLASS}`) && cell.textContent.trim().length > 0;
+        }).slice(0, 50);
+
+        if (cellsToProcess.length === 0) {
+            processing = false;
+            return;
+        }
+
+        cellsToProcess.forEach(wrapCellContent);
+
+        setTimeout(() => {
+            cellsToProcess.forEach(cell => {
+                adjustFontSizeForCell(cell);
+                if (isTranslationEnabled) translateIfNeeded(cell);
+                if (BUTTON_ADAPTER_CONFIG.isEnabled) adaptButtonsInRow(cell.closest('tr'));
+            });
+        }, 0);
+
+        processing = false;
+        if (allCells.length > cellsToProcess.length) setTimeout(processAllCellsInBatches, 100);
+    }
+
+    function wrapCellContent(cell) {
+        const text = getCleanText(cell);
+        if (!text) return;
+
+        cell.innerHTML = '';
+        cell.dataset.originalText = text;
+        delete cell.dataset.translated;
+
+        const container = document.createElement('div');
+        container.className = WRAPPER_CLASS;
+        
+        const origSpan = document.createElement('span');
+        origSpan.className = 'original';
+        origSpan.textContent = text;
+        container.appendChild(origSpan);
+        
+        cell.appendChild(container);
+        addCopyBtn(cell);
+
+        // 长文本点击逻辑
+        if (text.length > SINGLE_LINE_CHAR_LIMIT) {
+            container.classList.add('long-text');
+            container.title = "点击展开查看完整内容";
+            container.onclick = (e) => {
+                e.stopPropagation();
+                
+                // 关闭其他展开项
+                document.querySelectorAll(`.${EXPANDED_CLASS}`).forEach(el => {
+                    if (el !== container) {
+                        el.classList.remove(EXPANDED_CLASS);
+                        // 恢复原有样式
+                        el.style.minHeight = ''; 
+                        const pCell = el.closest('td');
+                        if(pCell) adjustFontSizeForCell(pCell);
+                    }
+                });
+
+                container.classList.toggle(EXPANDED_CLASS);
+                
+                if (container.classList.contains(EXPANDED_CLASS)) {
+                    // 展开状态：固定小字体，重置滚动，确保高度自适应
+                    container.style.fontSize = '14px';
+                    container.scrollTop = 0;
+                } else {
+                    // 收起状态：清理样式，重新计算缩放
+                    container.style.minHeight = '';
+                    adjustFontSizeForCell(cell);
+                }
+            };
+        }
+    }
+
+    function getCleanText(cell) {
+        const clone = cell.cloneNode(true);
+        clone.querySelectorAll('div[class*="btn"], button, .translation').forEach(el => el.remove());
+        return clone.textContent.trim();
+    }
+
+    // ====== 翻译 ======
+    async function translateIfNeeded(cell) {
+        if (cell.dataset.translating === 'true' || cell.dataset.translated === 'true') return;
+        const text = cell.dataset.originalText;
+        if (!text || text.length < 2) return;
+
+        if (translationCache.has(text)) {
+            applyTranslation(cell, translationCache.get(text));
+            return;
+        }
+
+        cell.dataset.translating = 'true';
+        
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (container && !container.querySelector('.trans-loading')) {
+            const loading = document.createElement('span');
+            loading.className = 'trans-loading';
+            loading.textContent = '...'; 
+            loading.style.color = '#ccc';
+            container.appendChild(loading);
+        }
+
+        try {
+            const res = await translateText(text);
+            const loading = container?.querySelector('.trans-loading');
+            if (loading) loading.remove();
+            
+            cell.dataset.translating = 'false';
+            if (res && res !== text) {
+                translationCache.set(text, res);
+                applyTranslation(cell, res);
+            }
+        } catch (e) {
+            cell.dataset.translating = 'false';
+            const loading = container?.querySelector('.trans-loading');
+            if (loading) loading.remove();
+        }
+    }
+
+    function applyTranslation(cell, transText) {
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (!container || container.querySelector('.translation')) return;
+
+        const transSpan = document.createElement('span');
+        transSpan.className = 'translation';
+        transSpan.textContent = transText; // 紧跟原文
+        container.appendChild(transSpan);
+        
+        cell.dataset.translated = 'true';
+        adjustFontSizeForCell(cell);
+    }
+
+    function translateText(text) {
+        return new Promise((resolve, reject) => {
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+            GM_xmlhttpRequest({
+                method: 'GET', url: url, timeout: 10000,
+                onload: (r) => {
+                    if (r.status !== 200) { reject('Error'); return; }
+                    try {
+                        const data = JSON.parse(r.responseText);
+                        if (data && data[0]) resolve(data[0].map(item => item[0]).join(''));
+                        else resolve(text);
+                    } catch (e) { reject(e); }
+                },
+                onerror: (e) => reject(e),
+                ontimeout: () => reject('Timeout')
+            });
+        });
+    }
+
+    // ====== 字体缩放 ======
+    function createMeasureContainer() {
+        if (globalMeasureContainer) return;
+        globalMeasureContainer = document.createElement('div');
+        globalMeasureContainer.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;padding:6px 8px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+        document.body.appendChild(globalMeasureContainer);
+    }
+
+    function adjustFontSizeForCell(cell) {
+        const container = cell.querySelector(`.${WRAPPER_CLASS}`);
+        if (!container || container.classList.contains(EXPANDED_CLASS)) return;
+
+        let text = '';
+        const orig = container.querySelector('.original');
+        const trans = container.querySelector('.translation');
+        if (orig) text += orig.textContent;
+        if (trans) text += trans.textContent;
+        if (!text) text = cell.dataset.originalText || '';
+
+        if (!globalMeasureContainer) createMeasureContainer();
+        globalMeasureContainer.style.width = container.clientWidth + 'px';
+        globalMeasureContainer.textContent = text;
+
+        let size = MAX_FONT_SIZE;
+        const isSingleLine = text.length <= SINGLE_LINE_CHAR_LIMIT;
+
+        container.classList.toggle('single-line', isSingleLine);
+
+        if (isSingleLine) {
+            container.style.fontSize = MAX_FONT_SIZE + 'px';
+        } else {
+            globalMeasureContainer.style.fontSize = size + 'px';
+            while (size > MIN_FONT_SIZE && globalMeasureContainer.scrollHeight > MAX_CELL_HEIGHT) {
+                size -= 1;
+                globalMeasureContainer.style.fontSize = size + 'px';
+            }
+            container.style.fontSize = size + 'px';
+        }
+        
+        container.classList.toggle('no-scroll', container.scrollHeight <= MAX_CELL_HEIGHT + 5);
+    }
+
+    // ====== 样式 ======
+    function addGlobalStyle() {
+        const css = `
+            .ant-table-tbody > tr > td:nth-child(${COLUMN_INDEX}) { vertical-align: top !important; padding: 0 !important; height: auto !important; position: relative !important; }
+            
+            .${WRAPPER_CLASS} { 
+                position: relative; width: 100%; max-height: ${MAX_CELL_HEIGHT}px; overflow-y: auto; 
+                padding: 6px 8px; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                line-height: 1.4 !important; display: block !important; text-align: left !important;
+                transition: min-height 0.2s, height 0.2s;
+            }
+
+            .${WRAPPER_CLASS}.single-line { 
+                height: ${SINGLE_LINE_HEIGHT}px; line-height: ${SINGLE_LINE_HEIGHT}px !important; 
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            
+            .${WRAPPER_CLASS}.long-text { cursor: zoom-in; }
+            .${WRAPPER_CLASS}.long-text:hover { background: rgba(24,144,255,0.05); }
+            
+            /* 译文样式修正：跟随默认颜色，仅加粗 */
+            .translation { 
+                display: inline; 
+                font-weight: bold; 
+                color: inherit; /* 跟随父元素颜色 */
+                margin: 0 !important; 
+                padding: 0 !important;
+            }
+
+            /* 悬浮层样式修正：增加宽度和最小高度 */
+            .${WRAPPER_CLASS}.${EXPANDED_CLASS} {
+                position: absolute !important; top: 0; left: 0; 
+                width: 100%; min-width: 350px; /* 更宽一点，避免换行太频繁 */
+                height: auto !important; 
+                min-height: 120px !important; /* 确保展开后有足够高度 */
+                max-height: 600px !important;
+                background: #fff; z-index: 9999; 
+                box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+                border: 1px solid #d9d9d9; 
+                border-radius: 4px; padding: 12px;
+                overflow-y: auto; cursor: zoom-out;
+            }
+            
+            .${COPY_BTN_CLASS}, .${ROLE_COPY_BTN_CLASS}, .${ROLE_ID_ONLY_COPY_BTN_CLASS} { 
+                position: absolute; background: rgba(255,255,255,0.8); border: 1px solid #ccc; border-radius: 3px; 
+                display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; color: #666; 
+            }
+            .${COPY_BTN_CLASS} { top: 4px; right: 4px; width: 26px; height: 26px; font-size: 14px; }
+            .${ROLE_COPY_BTN_CLASS} { top: 4px; right: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; }
+            .${ROLE_ID_ONLY_COPY_BTN_CLASS} { top: 4px; left: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; }
+            
+            td:hover .${COPY_BTN_CLASS}, td:hover .${ROLE_COPY_BTN_CLASS}, td:hover .${ROLE_ID_ONLY_COPY_BTN_CLASS} { border-color: #1890ff; color: #1890ff; background: #fff; }
+            .copied { color: #52c41a !important; border-color: #52c41a !important; }
+            .error { color: #ff4d4f !important; }
+        `;
+        const style = document.createElement('style');
+        style.textContent = css;
+        document.head.appendChild(style);
+    }
+
+    // ====== 复制 & RoleID ======
+    function addCopyBtn(cell) {
+        if (cell.querySelector(`.${COPY_BTN_CLASS}`)) return;
+        const btn = document.createElement('div');
+        btn.className = COPY_BTN_CLASS;
+        btn.textContent = '+';
+        btn.title = '复制';
+        btn.onclick = e => { e.stopPropagation(); copyText(cell.dataset.originalText, btn, '+'); };
+        cell.appendChild(btn);
+    }
+
+    function addRoleButtons() {
+        const headers = document.querySelectorAll('.ant-table-thead th');
+        roleIdColumnIndexes = [];
+        headers.forEach(h => {
+            if (/role_?id/i.test(h.textContent)) {
+                const idx = Array.from(h.parentElement.children).indexOf(h) + 1;
+                if (idx !== COLUMN_INDEX && !roleIdColumnIndexes.includes(idx)) roleIdColumnIndexes.push(idx);
+            }
+        });
+
+        roleIdColumnIndexes.forEach(idx => {
+            document.querySelectorAll(`.ant-table-tbody > tr > td:nth-child(${idx})`).forEach(cell => {
+                if (!cell.querySelector(`.${ROLE_COPY_BTN_CLASS}`)) {
+                    const txt = cell.textContent.trim();
+                    if (!txt) return;
+
+                    const btn1 = document.createElement('div');
+                    btn1.className = ROLE_COPY_BTN_CLASS;
+                    btn1.textContent = '+';
+                    btn1.onclick = e => {
+                        e.stopPropagation();
+                        const row = cell.closest('tr');
+                        const main = row.querySelector(`td:nth-child(${COLUMN_INDEX})`);
+                        const mainTxt = main ? (main.dataset.originalText || main.textContent) : '';
+                        copyText(mainTxt + '\n' + txt, btn1, '+');
+                    };
+                    cell.style.position = 'relative';
+                    cell.appendChild(btn1);
+
+                    const btn2 = document.createElement('div');
+                    btn2.className = ROLE_ID_ONLY_COPY_BTN_CLASS;
+                    btn2.textContent = '-';
+                    btn2.onclick = e => { e.stopPropagation(); copyText(txt, btn2, '-'); };
+                    cell.appendChild(btn2);
+                }
+            });
+        });
+    }
+
+    async function copyText(txt, btn, icon) {
+        try {
+            await navigator.clipboard.writeText(txt || '');
+            btn.textContent = '✓'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = icon; btn.classList.remove('copied'); }, 1000);
+        } catch(e) {
+            btn.textContent = '✗'; btn.classList.add('error');
+            setTimeout(() => { btn.textContent = icon; btn.classList.remove('error'); }, 1000);
+        }
+    }
+
+    // ====== 监控与面板 ======
+    function startStableMonitoring() {
+        const observer = new MutationObserver((mutations) => {
+            let shouldProcess = false;
+            for (const m of mutations) {
+                if (m.target.nodeType === 1 && m.target.closest('.ant-popover, .ant-tooltip')) continue;
+                if (m.type === 'childList') {
+                    for (const n of m.addedNodes) {
+                        if (n.nodeType === 1 && (n.tagName === 'TR' || n.tagName === 'TD' || n.querySelector('.ant-table-tbody'))) {
+                            shouldProcess = true; break;
+                        }
+                    }
+                }
+                if (shouldProcess) break;
+            }
+            if (shouldProcess) {
+                if (processDebounceTimer) clearTimeout(processDebounceTimer);
+                processDebounceTimer = setTimeout(() => { processAllCellsInBatches(); addRoleButtons(); }, 500);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function createControlPanel() {
+        controlPanel = document.createElement('div');
+        controlPanel.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:12px;color:#333;';
+        controlPanel.innerHTML = `
+            <div id="p-mini" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1890ff;font-weight:bold;background:rgba(24,144,255,0.1);">+</div>
+            <div id="p-full" style="display:none;width:240px;">
+                <div style="padding:10px;background:#f0f2f5;display:flex;justify-content:space-between;"><b>翻译助手 v8.9</b><span id="p-close" style="cursor:pointer;">−</span></div>
+                <div style="padding:15px;">
+                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-trans" ${isTranslationEnabled?'checked':''}> 启用翻译 (Alt+Z)</label>
+                    <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="chk-adapt" ${BUTTON_ADAPTER_CONFIG.isEnabled?'checked':''}> 按钮适配 (=)</label>
+                    <div style="margin:8px 0;">字体: <input id="i-min" value="${MIN_FONT_SIZE}" style="width:30px">-<input id="i-max" value="${MAX_FONT_SIZE}" style="width:30px"> px</div>
+                    <div style="margin:8px 0;">长文本限制: <input id="i-lim" value="${SINGLE_LINE_CHAR_LIMIT}" style="width:30px"> 字</div>
+                    <button id="b-apply" style="width:100%;margin-top:5px;padding:5px;background:#1890ff;color:fff;border:none;border-radius:4px;cursor:pointer;">应用</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(controlPanel);
+        
+        const mini = controlPanel.querySelector('#p-mini');
+        const full = controlPanel.querySelector('#p-full');
+        const toggle = () => {
+            controlPanelMinimized = !controlPanelMinimized;
+            mini.style.display = controlPanelMinimized ? 'flex' : 'none';
+            full.style.display = controlPanelMinimized ? 'none' : 'block';
+            GM_setValue('panelMin', controlPanelMinimized);
+        };
+        mini.onclick = toggle; controlPanel.querySelector('#p-close').onclick = toggle;
+        if(controlPanelMinimized) toggle(); 
+
+        controlPanel.querySelector('#chk-trans').onchange = e => {
+            isTranslationEnabled = e.target.checked; GM_setValue('trans', isTranslationEnabled);
+            isTranslationEnabled ? processAllCellsInBatches() : location.reload();
+        };
+        controlPanel.querySelector('#chk-adapt').onchange = e => {
+            // 调用直接切换函数
+            toggleButtonAdapter(e.target.checked);
+        };
+        controlPanel.querySelector('#b-apply').onclick = () => {
+            MIN_FONT_SIZE = parseInt(controlPanel.querySelector('#i-min').value);
+            MAX_FONT_SIZE = parseInt(controlPanel.querySelector('#i-max').value);
+            SINGLE_LINE_CHAR_LIMIT = parseInt(controlPanel.querySelector('#i-lim').value);
+            GM_setValue('minF', MIN_FONT_SIZE); GM_setValue('maxF', MAX_FONT_SIZE); GM_setValue('lim', SINGLE_LINE_CHAR_LIMIT);
+            processAllCellsInBatches();
+        };
+    }
+
+    function loadSettings() {
+        try {
+            isTranslationEnabled = GM_getValue('trans', true);
+            BUTTON_ADAPTER_CONFIG.isEnabled = GM_getValue('adapt', false);
+            controlPanelMinimized = GM_getValue('panelMin', true);
+            MIN_FONT_SIZE = GM_getValue('minF', 16);
+            MAX_FONT_SIZE = GM_getValue('maxF', 32);
+            SINGLE_LINE_CHAR_LIMIT = GM_getValue('lim', 60);
+        } catch(e){}
+    }
+
+    function bindShortcut() {
+        document.addEventListener('keydown', e => {
+            if(e.target.tagName==='INPUT') return;
+            
+            // Alt+Z 切换翻译
+            if(e.altKey && e.key.toLowerCase()==='z') {
+                e.preventDefault(); 
+                document.getElementById('chk-trans').click();
+                GM_notification({text:`翻译 ${isTranslationEnabled?'ON':'OFF'}`, timeout:1000});
+            }
+            // - 切换面板
+            if(e.key==='-' || e.code === 'Minus') {
+                e.preventDefault();
+                document.getElementById('p-mini').click();
+            }
+            // = 切换按钮适配 (直接调用，不依赖 click)
+            if(e.key==='=' || e.code === 'Equal') {
+                e.preventDefault();
+                toggleButtonAdapter(!BUTTON_ADAPTER_CONFIG.isEnabled);
+                // 同步 UI
+                const chk = document.getElementById('chk-adapt');
+                if(chk) chk.checked = BUTTON_ADAPTER_CONFIG.isEnabled;
+                GM_notification({text:`按钮适配 ${BUTTON_ADAPTER_CONFIG.isEnabled?'ON':'OFF'}`, timeout:1000});
+            }
+        });
+    }
+
+    // 直接切换函数
+    function toggleButtonAdapter(state) {
+        BUTTON_ADAPTER_CONFIG.isEnabled = state;
+        GM_setValue('adapt', BUTTON_ADAPTER_CONFIG.isEnabled);
+        if (state) {
+            processAllTargetButtons();
+        } else {
+            // 清除样式
+            document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
+                btn.style.height = '';
+                btn.style.lineHeight = '';
+            });
+            processedButtons.delete(btn); // 清除记录
+        }
+    }
+
+    // 智能滚动
+    function initSmartScrollHandling() {
+        document.addEventListener('wheel', e => {
+            const t = e.target.closest(`.${WRAPPER_CLASS}`);
+            if(t && t.scrollHeight > t.clientHeight) {
+                if((e.deltaY<0 && t.scrollTop>0) || (e.deltaY>0 && Math.abs(t.scrollHeight-t.scrollTop-t.clientHeight)>1)) e.stopPropagation();
+            }
+        }, {passive:false, capture:true});
+    }
+
+    // 按钮适配
+    function processAllTargetButtons() {
+        if (!BUTTON_ADAPTER_CONFIG.isEnabled) return;
+        document.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(btn => {
+            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>btn.textContent.includes(t))) adaptButtonHeight(btn);
+        });
+    }
+    function adaptButtonHeight(btn) {
+        const row = btn.closest('tr'); if(!row) return;
+        const cell = row.querySelector(`td:nth-child(${COLUMN_INDEX}) .${WRAPPER_CLASS}`); if(!cell) return;
+        let h = Math.min(Math.max(cell.scrollHeight + BUTTON_ADAPTER_CONFIG.offset, BUTTON_ADAPTER_CONFIG.minHeight), BUTTON_ADAPTER_CONFIG.maxHeight);
+        btn.style.height = h+'px'; btn.style.lineHeight = h+'px';
+        processedButtons.add(btn);
+    }
+    function adaptButtonsInRow(row) {
+        if(row) setTimeout(() => row.querySelectorAll(BUTTON_ADAPTER_CONFIG.targetButtons).forEach(b => {
+            if(BUTTON_ADAPTER_CONFIG.targetTexts.some(t=>b.textContent.includes(t))) adaptButtonHeight(b);
+        }), 500);
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
